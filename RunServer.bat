@@ -1,0 +1,1 @@
+docker run -i -p 8002:8002 gateway-image
