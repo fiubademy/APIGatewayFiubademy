@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from gateway.models.modelsGateway import SessionToken
+from gateway.models.modelsGateway import SessionToken, AdminSessionToken
 import uuid
 import hashlib
 import requests
@@ -56,14 +56,45 @@ def checkSessionToken(sessionToken):
     return True, False, ses_token_reg.user_id #Token Exists, Token Not Expired, and ID not Null
 
 
+def checkAdminSessionToken(sessionToken):
+    try:
+        ses_token_reg = session.query(AdminSessionToken).filter(AdminSessionToken.session_token == sessionToken).first()
+    except NoResultFound as e:
+        return False, True, None #Not Exists, Expired, ID = None
+    if not ses_token_reg:
+        return False, True, None #Not Exists, Expired, ID = None
+    time_delta = (datetime.now() - ses_token_reg.time_last_action)
+    total_seconds = time_delta.total_seconds()
+    minutes_since_no_action = total_seconds/60
+    if minutes_since_no_action > SESSION_EXPIRATION_TIME_IN_MINUTES:
+        session.query(AdminSessionToken).filter(AdminSessionToken.session_token == sessionToken).delete()
+        return True, True, None #Exists, Expired, ID = None
+    ses_token_reg.time_last_action = datetime.now()
+    session.add(ses_token_reg)
+    session.commit()
+    return True, False, ses_token_reg.user_id #Token Exists, Token Not Expired, and ID not Null
+
+
+def createAdminSessionToken(user_id):
+    session.query(AdminSessionToken).filter(AdminSessionToken.user_id == user_id).delete()
+    sessionToken = str(uuid.uuid4())
+    session.add(AdminSessionToken(session_token=sessionToken, user_id = user_id, time_last_action = datetime.now()))
+    session.commit()
+    return sessionToken
+
+
 def createSessionToken(user_id):
     session.query(SessionToken).filter(SessionToken.user_id == user_id).delete()
-
     sessionToken = str(uuid.uuid4())
     session.add(SessionToken(session_token=sessionToken, user_id = user_id, time_last_action = datetime.now()))
     session.commit()
     return sessionToken
 
+
+def deleteTokenUser(user_id):
+    session.query(SessionToken).filter(SessionToken.user_id == user_id).delete()
+    session.query(AdminSessionToken).filter(AdminSessionToken.user_id == user_id).delete()
+    session.commit()
 
 
 @router.get('/{page_num}')
@@ -90,19 +121,20 @@ async def getUser(user_id= ''):
     return query
 
 
-@router.get('/get_token/{session_token}', status_code=status.HTTP_200_OK)
-async def getTokenForRecPasswd(session_token:str):
-    tokenExists, tokenExpired, user_id = checkSessionToken(session_token)
-    if not tokenExists:
-        return JSONResponse(status_code = status.HTTP_403_FORBIDDEN, content='Session Token does not exist')
-    if tokenExpired:
-        return JSONResponse(status_code = status.HTTP_403_FORBIDDEN, content='Session Token expired.')
-    url_request = URL_API + '/get_token/' + user_id
-    return requests.get(url_request).json()
+@router.post('/get_token', status_code=status.HTTP_200_OK)
+async def getTokenForRecPasswd(email:str):
+    url_request = URL_API + '/get_token'
+    return requests.post(url_request, params= {'email':email} ).json()
 
 
 @router.post('/login')
 async def loginUser(email:str, password:str):
+    url_request_user = URL_API + '/1?' + 'emailFilter=' + email
+    query_user = requests.get(url_request_user)
+    if query_user.status_code == status.HTTP_200_OK:
+        print(query_user.json()[0]['is_blocked'])
+        if query_user.json()[0]['is_blocked'] == 'Y':
+            return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content = "User " + email + " is currently blocked and can not be logged in.")
     url_request = URL_API + '/login'
     retorno = requests.post(url_request, params={'email':email, 'password': password})
     if retorno.status_code == status.HTTP_202_ACCEPTED:
@@ -161,10 +193,10 @@ async def changePassword(session_token: str, oldPassword: str, newPassword: str)
     return JSONResponse(status_code = retorno.status_code, content = retorno.json())
 
 
-@router.patch('/recoverPassword/{user_id}')
-async def recoverPassword(email: str, newPassword: str, token:str):
-    url_request = URL_API + '/recoverPassword/' + user_id
-    retorno = requests.patch(url_request, params={'email':email, 'newPassword': newPassword, 'token': token})
+@router.patch('/recoverPassword/{token}')
+async def recoverPassword(newPassword: str, token:str):
+    url_request = URL_API + '/recoverPassword/' + token
+    retorno = requests.patch(url_request, params={'newPassword': newPassword, 'token': token})
     return JSONResponse(status_code = retorno.status_code, content = retorno.json())
 
 
@@ -193,18 +225,22 @@ async def setLocation(session_token: str, latitude: float, longitude: float):
 
 
 @router.patch('/{user_id}/toggleBlock')
-async def toggleBlockUser(user_id: str):
-    # Should take in account session token of an admin
+async def toggleBlockUser(user_id: str, admin_ses_token: str):
+    tokenExists, tokenExpired, user_id_admin = checkAdminSessionToken(admin_ses_token)
+    if not tokenExists:
+        return JSONResponse(status_code = status.HTTP_403_FORBIDDEN, content='Admin Session Token does not exist')
+    if tokenExpired:
+        return JSONResponse(status_code = status.HTTP_403_FORBIDDEN, content='Admin Session Token expired.')
+    deleteTokenUser(user_id)
     url_request = URL_API + '/' + user_id + '/toggleBlock'
     retorno = requests.patch(url_request, params={'user_id': user_id})
     return JSONResponse(status_code = retorno.status_code, content = retorno.json())
 
 
-
-
 @router.post('/loginAdmin')
 async def loginAdmin(email:str, password:str):
-    # Should create session token of an admin
-    url_request = URL_API + '/login'
+    url_request = URL_API + '/loginAdmin'
     retorno = requests.post(url_request, params={'email':email, 'password': password})
+    if retorno.status_code == status.HTTP_202_ACCEPTED:
+        return JSONResponse(status_code = retorno.status_code, content = createAdminSessionToken(retorno.json()))
     return JSONResponse(status_code = retorno.status_code, content = retorno.json())
