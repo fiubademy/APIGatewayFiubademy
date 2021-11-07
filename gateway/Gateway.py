@@ -1,19 +1,30 @@
 from fastapi import FastAPI, status
-from typing import List, Optional
-from pydantic import EmailStr
-from pydantic.main import BaseModel
-from starlette.responses import JSONResponse
 import uvicorn
-import uuid
+import sys
+import os
+from fastapi.middleware.cors import CORSMiddleware
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from gateway.DataBase import Base, engine
+from gateway.userService import UsersApiCalls
+
+origins = ["*"]
 
 app = FastAPI()
 
-class GatewayResponse(BaseModel):
-    Id: int  # TODO: Armar este modelo
+UsersApiCalls.set_engine(engine)
 
-@app.get('/', response_model = List[GatewayResponse], status_code=status.HTTP_200_OK)
-async def getTestGateway():  # TODO: Filtros
-    return [{'Id': 1}]  # Hardcoded para probar
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(UsersApiCalls.router, prefix="/users", tags=["Users"])
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0', port=8002)
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+    uvicorn.run(app, host='0.0.0.0', port=8000)
