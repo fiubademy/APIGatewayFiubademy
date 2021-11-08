@@ -117,7 +117,7 @@ async def getUsers(page_num: int, emailFilter: Optional[str] = '', usernameFilte
 @router.get('/ID/{user_id}', status_code=status.HTTP_200_OK)
 async def getUser(user_id= ''):
     url_request = URL_API + '/ID/' + user_id
-    query = requests.get(url_request).json()
+    query = requests.get(url_request)
     return JSONResponse(status_code = query.status_code, content=query.json())
 
 
