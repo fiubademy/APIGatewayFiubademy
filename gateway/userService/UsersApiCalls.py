@@ -110,21 +110,22 @@ async def getUsers(page_num: int, emailFilter: Optional[str] = '', usernameFilte
             if query_params_quantity > 0:
                 url_request = url_request + '&'
             url_request = url_request + 'usernameFilter=' + usernameFilter
-    query = requests.get(url_request).json()
-    return query
+    query = requests.get(url_request)
+    return JSONResponse(status_code = query.status_code, content=query.json())
 
 
 @router.get('/ID/{user_id}', status_code=status.HTTP_200_OK)
 async def getUser(user_id= ''):
     url_request = URL_API + '/ID/' + user_id
     query = requests.get(url_request).json()
-    return query
+    return JSONResponse(status_code = query.status_code, content=query.json())
 
 
 @router.post('/get_token', status_code=status.HTTP_200_OK)
 async def getTokenForRecPasswd(email:str):
     url_request = URL_API + '/get_token'
-    return requests.post(url_request, params= {'email':email} ).json()
+    query = requests.post(url_request, params= {'email':email} )
+    return JSONResponse(status_code = query.status_code, content = query.json())
 
 
 @router.post('/login')
@@ -132,8 +133,7 @@ async def loginUser(email:str, password:str):
     url_request_user = URL_API + '/1?' + 'emailFilter=' + email
     query_user = requests.get(url_request_user)
     if query_user.status_code == status.HTTP_200_OK:
-        print(query_user.json()[0]['is_blocked'])
-        if query_user.json()[0]['is_blocked'] == 'Y':
+        if query_user.json()['content'][0]['is_blocked'] == 'Y':
             return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content = "User " + email + " is currently blocked and can not be logged in.")
     url_request = URL_API + '/login'
     retorno = requests.post(url_request, params={'email':email, 'password': password})
