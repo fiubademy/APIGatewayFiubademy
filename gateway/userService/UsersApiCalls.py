@@ -29,6 +29,11 @@ session = None
 engine = None
 
 
+def set_session_expiration_time_in_minutes(minutes):
+    global SESSION_EXPIRATION_TIME_IN_MINUTES
+    SESSION_EXPIRATION_TIME_IN_MINUTES = minutes
+
+
 def set_engine(engine_rcvd):
     global engine
     global Session
@@ -243,4 +248,28 @@ async def loginAdmin(email:str, password:str):
     retorno = requests.post(url_request, params={'email':email, 'password': password})
     if retorno.status_code == status.HTTP_202_ACCEPTED:
         return JSONResponse(status_code = retorno.status_code, content = createAdminSessionToken(retorno.json()))
+    return JSONResponse(status_code = retorno.status_code, content = retorno.json())
+
+
+@router.post('/loginGoogle')
+async def loginGoogle(idGoogle:str, username:str, email:str):
+    url_request = URL_API + '/loginGoogle'
+    retorno = requests.post(url_request, params={'idGoogle': idGoogle, 'username':username, 'email':email})
+    if retorno.status_code == status.HTTP_202_ACCEPTED or retorno.status_code == status.HTTP_201_CREATED:
+        return JSONResponse(status_code = retorno.status_code, content = {'sessionToken':createSessionToken(retorno.json()['user_id']), 'user_id': retorno.json()['user_id'], 'idGoogle': idGoogle})
+    return JSONResponse(status_code = retorno.status_code,content = retorno.json())
+
+
+@router.delete('/deleteGoogle/{idGoogle}')
+async def deleteGoogle(idGoogle:str, sessionToken: str):
+    tokenExists, tokenExpired, user_id = checkSessionToken(sessionToken)
+    if not tokenExists:
+        return JSONResponse(status_code = status.HTTP_403_FORBIDDEN, content='Session Token does not exist')
+    if tokenExpired:
+        return JSONResponse(status_code = status.HTTP_403_FORBIDDEN, content='Session Token expired.')
+    url_request = URL_API + '/deleteGoogle/' + idGoogle
+    retorno = requests.delete(url_request)
+    if retorno.status_code == status.HTTP_200_OK:
+        deleteTokenUser(retorno.json())
+        return JSONResponse(status_code = retorno.status_code, content = "User with idGoogle: " + idGoogle + ", has been correctly deleted." )
     return JSONResponse(status_code = retorno.status_code, content = retorno.json())

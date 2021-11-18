@@ -5,7 +5,7 @@ from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, F
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from gateway.DataBase import Base
+from DataBase import Base
 
 
 class SessionToken(Base):
