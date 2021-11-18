@@ -13,7 +13,7 @@ UsersApiCalls.set_engine(test_engine)
 
 
 def test_user_session_token_creation():
-    session_token = UsersApiCalls.createSessionToken('id_cualquiera')
+    session_token = UsersApiCalls.createSessionToken('id_cualquiera')['sessionToken']
     exists, expired, user_id = UsersApiCalls.checkSessionToken(session_token)
     assert (exists == True)
     assert (expired == False)
@@ -22,7 +22,7 @@ def test_user_session_token_creation():
 
 
 def test_user_session_token_deletion():
-    session_token = UsersApiCalls.createSessionToken('id_cualquiera')
+    session_token = UsersApiCalls.createSessionToken('id_cualquiera')['sessionToken']
     exists, expired, user_id = UsersApiCalls.checkSessionToken(session_token)
     assert (exists == True)
     assert (expired == False)
@@ -35,12 +35,12 @@ def test_user_session_token_deletion():
 
 
 def test_user_session_token_replaced_with_new_session():
-    session_token = UsersApiCalls.createSessionToken('id_cualquiera')
+    session_token = UsersApiCalls.createSessionToken('id_cualquiera')['sessionToken']
     exists, expired, user_id = UsersApiCalls.checkSessionToken(session_token)
     assert (exists == True)
     assert (expired == False)
     assert (user_id == 'id_cualquiera')
-    session_token_two = UsersApiCalls.createSessionToken('id_cualquiera')
+    session_token_two = UsersApiCalls.createSessionToken('id_cualquiera')['sessionToken']
     exists, expired, user_id = UsersApiCalls.checkSessionToken(session_token)
     assert (exists == False)
     assert (expired == True)
@@ -54,7 +54,7 @@ def test_user_session_token_replaced_with_new_session():
 
 def test_user_session_token_expirated():
     UsersApiCalls.set_session_expiration_time_in_minutes(0.05)
-    session_token = UsersApiCalls.createSessionToken('id_cualquiera')
+    session_token = UsersApiCalls.createSessionToken('id_cualquiera')['sessionToken']
     time.sleep(4)
     exists, expired, user_id = UsersApiCalls.checkSessionToken(session_token)
     assert(exists == True)

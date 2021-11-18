@@ -256,7 +256,8 @@ async def loginGoogle(idGoogle:str, username:str, email:str):
     url_request = URL_API + '/loginGoogle'
     retorno = requests.post(url_request, params={'idGoogle': idGoogle, 'username':username, 'email':email})
     if retorno.status_code == status.HTTP_202_ACCEPTED or retorno.status_code == status.HTTP_201_CREATED:
-        return JSONResponse(status_code = retorno.status_code, content = {'sessionToken':createSessionToken(retorno.json()['user_id']), 'user_id': retorno.json()['user_id'], 'idGoogle': idGoogle})
+        dict_return = createSessionToken(retorno.json()['user_id'])
+        return JSONResponse(status_code = retorno.status_code, content = {'sessionToken': dict_return['sessionToken'], 'user_id': retorno.json()['user_id'], 'idGoogle': idGoogle})
     return JSONResponse(status_code = retorno.status_code,content = retorno.json())
 
 
