@@ -93,7 +93,7 @@ def createSessionToken(user_id):
     sessionToken = str(uuid.uuid4())
     session.add(SessionToken(session_token=sessionToken, user_id = user_id, time_last_action = datetime.now()))
     session.commit()
-    return sessionToken
+    return {'sessionToken': sessionToken, 'userID': user_id}
 
 
 def deleteTokenUser(user_id):
