@@ -5,7 +5,6 @@ from typing import List, Optional
 
 class CourseCreate(BaseModel):
     name: str
-    owner: UUID
     description: Optional[str] = ""
     hashtags: Optional[List] = []
     sub_level: Optional[int]

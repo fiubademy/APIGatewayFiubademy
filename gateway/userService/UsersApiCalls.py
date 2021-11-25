@@ -43,7 +43,7 @@ def set_engine(engine_rcvd):
     session = Session()
 
 
-def checkSessionToken(sessionToken):
+def checkSessionToken(sessionToken: str):
     try:
         ses_token_reg = session.query(SessionToken).filter(SessionToken.session_token == sessionToken).first()
     except NoResultFound as e:
@@ -61,7 +61,7 @@ def checkSessionToken(sessionToken):
     return True, False, ses_token_reg.user_id #Token Exists, Token Not Expired, and ID not Null
 
 
-def checkAdminSessionToken(sessionToken):
+def checkAdminSessionToken(sessionToken: str):
     try:
         ses_token_reg = session.query(AdminSessionToken).filter(AdminSessionToken.session_token == sessionToken).first()
     except NoResultFound as e:

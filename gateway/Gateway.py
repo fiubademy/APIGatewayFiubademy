@@ -6,13 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from gateway.DataBase import Base, engine
 from gateway.userService import UsersApiCalls
-from gateway.courseService import coursesApiCalls
+from gateway.courseService import coursesApiCalls, setupCourseApi
 
 origins = ["*"]
 
 app = FastAPI()
 
 UsersApiCalls.set_engine(engine)
+setupCourseApi.set_engine(engine)
 
 
 app.add_middleware(
