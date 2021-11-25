@@ -17,6 +17,9 @@ async def get_courses(
     page_num: int,
     filter: CourseFilter = Depends()
 ):
+    '''
+    Muestra todos los cursos que cumplan los filtros. Se muestran paginados de a 5 elementos.
+    '''
     url_request = f'{URL_API}/all/{page_num}'
     query = requests.get(url_request, params=filter.__dict__)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -27,6 +30,9 @@ async def get_courses(
 
 @router.get('/id/{courseId}')
 async def get_by_id(courseId: UUID):
+    '''
+    Muestra los datos públicos del curso con el ID especificado.
+    '''
     url_request = f'{URL_API}/{courseId}'
     query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -37,7 +43,10 @@ async def get_by_id(courseId: UUID):
 
 @ router.get('/student/{userId}')
 async def get_by_student(userId: UUID, _=Depends(admin_access)):
-    # solo un admin puede ver los cursos de cada estudiante
+    '''
+    Muestra los cursos del usuario especificado.
+    Permisos necesarios: admin.
+    '''
     url_request = f'{URL_API}/student/{userId}'
     query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -48,7 +57,9 @@ async def get_by_student(userId: UUID, _=Depends(admin_access)):
 
 @ router.get('/my_courses')
 async def get_my_courses(session=Depends(validate_session_token)):
-    # muestra los cursos del usuario logueado actualmente
+    '''
+    Muestra los cursos del usuario logueado actualmente.
+    '''
     url_request = f'{URL_API}/student/{session[1]}'
     query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -59,6 +70,10 @@ async def get_my_courses(session=Depends(validate_session_token)):
 
 @ router.get('/collaborator/{userId}')
 async def get_by_collaborator(userId: UUID, _=Depends(admin_access)):
+    '''
+    Muestra todos los cursos en los que el usuario especificado está inscripto como colaborador.
+    Permisos necesarios: admin.
+    '''
     url_request = f'{URL_API}/collaborator/{userId}'
     query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -69,7 +84,9 @@ async def get_by_collaborator(userId: UUID, _=Depends(admin_access)):
 
 @ router.get('/collaborator/my_courses')
 async def get_collaborator_my_courses(session=Depends(validate_session_token)):
-    # muestra los cursos donde está como colaborador el usuario logueado actualmente
+    '''  
+    Muestra los cursos donde está como colaborador el usuario logueado actualmente.
+    '''
     url_request = f'{URL_API}/collaborator/{session[1]}'
     query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -80,6 +97,9 @@ async def get_collaborator_my_courses(session=Depends(validate_session_token)):
 
 @ router.get('/hashtag/{tag}')
 async def get_by_hashtag(tag: str):
+    '''
+    Muestra todos los cursos que contengan el hashtag especificado.
+    '''
     url_request = f'{URL_API}/hashtag/{tag}'
     query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -90,6 +110,9 @@ async def get_by_hashtag(tag: str):
 
 @ router.post('')
 async def create(newCourse: CourseCreate, session=Depends(validate_session_token)):
+    '''
+    Permisos necesarios: cualquier usuario válido puede crear un curso.
+    '''
     url_request = URL_API
     newCourse = newCourse.copy(update={'owner': session[1]})
     query = requests.post(url_request, data=newCourse.json())
@@ -101,6 +124,9 @@ async def create(newCourse: CourseCreate, session=Depends(validate_session_token
 
 @ router.delete('/id/{courseId}')
 async def delete(courseId: UUID = Depends(owner_access)):
+    '''
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}'
     query = requests.delete(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -111,6 +137,10 @@ async def delete(courseId: UUID = Depends(owner_access)):
 
 @ router.patch('/id/{courseId}')
 async def update(request: CourseUpdate, courseId: UUID = Depends(owner_access)):
+    '''
+    Actualiza los campos especificados que sean no nulos.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}'
     query = requests.patch(url_request, data=request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -121,6 +151,10 @@ async def update(request: CourseUpdate, courseId: UUID = Depends(owner_access)):
 
 @ router.get('/id/{courseId}/students')
 async def get_students(courseId: UUID = Depends(owner_access)):
+    '''
+    Muestra la lista de los estudiantes inscriptos al curso. 
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}/students'
     query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -131,6 +165,10 @@ async def get_students(courseId: UUID = Depends(owner_access)):
 
 @ router.post('/id/{courseId}/add_student/{userId}')
 async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
+    '''
+    Agrega un usuario a un curso. 
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}/add_student/{userId}'
     query = requests.post(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -141,7 +179,9 @@ async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
 
 @ router.post('/id/{courseId}/enroll')
 async def enroll_student(courseId: UUID, userId: UUID = Depends(validate_subscription)):
-    # Dar de alta a un curso al usuario logueado, solo si la subscripcion alcanza
+    '''
+    Da de alta a un curso al usuario logueado actualemnte, solo si su subscripción es suficiente.
+    '''
     url_request = f'{URL_API}/{courseId}/add_student/{userId}'
     query = requests.post(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -152,6 +192,10 @@ async def enroll_student(courseId: UUID, userId: UUID = Depends(validate_subscri
 
 @ router.delete('/id/{courseId}/remove_student/{userId}')
 async def remove_student(userId: UUID, courseId: UUID = Depends(owner_access)):
+    '''
+    Da de baja un usuario de un curso.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}/remove_student/{userId}'
     query = requests.delete(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -162,7 +206,9 @@ async def remove_student(userId: UUID, courseId: UUID = Depends(owner_access)):
 
 @ router.delete('/id/{courseId}/unsubscribe')
 async def unsubscribe_student(courseId: UUID, session=Depends(validate_session_token)):
-    # Dar de baja de un curso al usuario logueado
+    '''
+    Da de baja de un curso al usuario logueado.
+    '''
     url_request = f'{URL_API}/{courseId}/remove_student/{session[1]}'
     query = requests.delete(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -173,6 +219,10 @@ async def unsubscribe_student(courseId: UUID, session=Depends(validate_session_t
 
 @ router.get('/id/{courseId}/collaborators')
 async def get_collaborators(courseId: UUID = Depends(owner_access)):
+    '''
+    Muestra la lista de colaboradores del curso.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}/collaborators'
     query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -183,6 +233,10 @@ async def get_collaborators(courseId: UUID = Depends(owner_access)):
 
 @ router.post('/id/{courseId}/add_collaborator/{userId}')
 async def add_collaborator(userId: UUID, courseId: UUID = Depends(owner_access)):
+    '''
+    Agrega al usuario como colaborador del curso.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}/add_collaborator/{userId}'
     query = requests.post(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -193,6 +247,10 @@ async def add_collaborator(userId: UUID, courseId: UUID = Depends(owner_access))
 
 @ router.delete('/id/{courseId}/remove_collaborator/{userId}')
 async def remove_collaborator(userId: UUID, courseId: UUID = Depends(owner_access)):
+    '''
+    Elimina al usuario de los colaboradores del curso.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}/remove_collaborator/{userId}'
     query = requests.delete(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -203,7 +261,9 @@ async def remove_collaborator(userId: UUID, courseId: UUID = Depends(owner_acces
 
 @ router.delete('/id/{courseId}/unsubscribe_collaborator')
 async def unsubscribe_collaborator(courseId: UUID, session=Depends(validate_session_token)):
-    # Dar de baja de un curso como colaborador al usuario logueado
+    '''
+    Elimina al usuario logueado actualmente de los colaboradores del curso.
+    '''
     url_request = f'{URL_API}/{courseId}/remove_collaborator/{session[1]}'
     query = requests.delete(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -214,6 +274,10 @@ async def unsubscribe_collaborator(courseId: UUID, session=Depends(validate_sess
 
 @ router.get('/id/{courseId}/hashtags')
 async def get_hashtags(courseId: UUID):
+    '''
+    Muestra la lista de hashtags del curso.
+    Permisos necesarios: es información pública.
+    '''
     url_request = f'{URL_API}/{courseId}/hashtags'
     query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -224,6 +288,10 @@ async def get_hashtags(courseId: UUID):
 
 @ router.post('/id/{courseId}/add_hashtags')
 async def add_hashtags(tags: List[str], courseId: UUID = Depends(owner_access)):
+    '''
+    Agrega los hashtags a un curso.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}/add_hashtags'
     query = requests.post(url_request, json=tags)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -234,6 +302,10 @@ async def add_hashtags(tags: List[str], courseId: UUID = Depends(owner_access)):
 
 @ router.delete('/id/{courseId}/remove_hashtags')
 async def remove_hashtags(tags: List[str], courseId: UUID = Depends(owner_access)):
+    '''
+    Elimina los hashtags del curso.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}/remove_hashtags'
     query = requests.delete(url_request, json=tags)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -244,6 +316,10 @@ async def remove_hashtags(tags: List[str], courseId: UUID = Depends(owner_access
 
 @ router.put('/id/{courseId}/block')
 async def set_block(block: bool = True, courseId: UUID = Depends(owner_access)):
+    '''
+    Bloquea el curso.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}/block'
     query = requests.put(url_request, params={'block': str(block)})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -254,6 +330,10 @@ async def set_block(block: bool = True, courseId: UUID = Depends(owner_access)):
 
 @ router.put('/id/{courseId}/status')
 async def set_status(in_edition: bool, courseId: UUID = Depends(owner_access)):
+    '''
+    Modifica el estado del curso en edición.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
     url_request = f'{URL_API}/{courseId}/status'
     query = requests.put(url_request, params={'in_edition': str(in_edition)})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
