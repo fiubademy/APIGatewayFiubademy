@@ -45,7 +45,7 @@ def set_engine(engine_rcvd):
     session = Session()
 
 
-def checkSessionToken(sessionToken):
+def checkSessionToken(sessionToken: str):
     try:
         ses_token_reg = session.query(SessionToken).filter(
             SessionToken.session_token == sessionToken).first()
@@ -65,7 +65,7 @@ def checkSessionToken(sessionToken):
     return True, False, ses_token_reg.user_id
 
 
-def checkAdminSessionToken(sessionToken):
+def checkAdminSessionToken(sessionToken: str):
     try:
         ses_token_reg = session.query(AdminSessionToken).filter(
             AdminSessionToken.session_token == sessionToken).first()
