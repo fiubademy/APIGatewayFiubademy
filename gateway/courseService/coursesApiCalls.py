@@ -28,27 +28,14 @@ async def get_courses(
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
-@router.get('/id/{courseId}')
-async def get_by_id(courseId: UUID):
-    '''
-    Muestra los datos públicos del curso con el ID especificado.
-    '''
-    url_request = f'{URL_API}/{courseId}'
-    query = requests.get(url_request)
-    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
-
-
 @ router.get('/student/{userId}')
 async def get_by_student(userId: UUID, _=Depends(admin_access)):
     '''
     Muestra los cursos del usuario especificado.
     Permisos necesarios: admin.
     '''
-    url_request = f'{URL_API}/student/{userId}'
-    query = requests.get(url_request)
+    url_request = f'{URL_API}/all'
+    query = requests.get(url_request, params={'student': userId})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
@@ -60,8 +47,8 @@ async def get_my_courses(session=Depends(validate_session_token)):
     '''
     Muestra los cursos del usuario logueado actualmente.
     '''
-    url_request = f'{URL_API}/student/{session[1]}'
-    query = requests.get(url_request)
+    url_request = f'{URL_API}/all'
+    query = requests.get(url_request, params={'student': session[1]})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
@@ -74,8 +61,8 @@ async def get_by_collaborator(userId: UUID, _=Depends(admin_access)):
     Muestra todos los cursos en los que el usuario especificado está inscripto como colaborador.
     Permisos necesarios: admin.
     '''
-    url_request = f'{URL_API}/collaborator/{userId}'
-    query = requests.get(url_request)
+    url_request = f'{URL_API}/all'
+    query = requests.get(url_request, params={'collaborator': userId})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
@@ -87,62 +74,8 @@ async def get_collaborator_my_courses(session=Depends(validate_session_token)):
     '''  
     Muestra los cursos donde está como colaborador el usuario logueado actualmente.
     '''
-    url_request = f'{URL_API}/collaborator/{session[1]}'
-    query = requests.get(url_request)
-    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
-
-
-@ router.get('/hashtag/{tag}')
-async def get_by_hashtag(tag: str):
-    '''
-    Muestra todos los cursos que contengan el hashtag especificado.
-    '''
-    url_request = f'{URL_API}/hashtag/{tag}'
-    query = requests.get(url_request)
-    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
-
-
-@ router.post('')
-async def create(newCourse: CourseCreate, session=Depends(validate_session_token)):
-    '''
-    Permisos necesarios: cualquier usuario válido puede crear un curso.
-    '''
-    url_request = URL_API
-    newCourse = newCourse.copy(update={'owner': session[1]})
-    query = requests.post(url_request, data=newCourse.json())
-    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
-
-
-@ router.delete('/id/{courseId}')
-async def delete(courseId: UUID = Depends(owner_access)):
-    '''
-    Permisos necesarios: ser el dueño del curso o un admin.
-    '''
-    url_request = f'{URL_API}/{courseId}'
-    query = requests.delete(url_request)
-    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
-
-
-@ router.patch('/id/{courseId}')
-async def update(request: CourseUpdate, courseId: UUID = Depends(owner_access)):
-    '''
-    Actualiza los campos especificados que sean no nulos.
-    Permisos necesarios: ser el dueño del curso o un admin.
-    '''
-    url_request = f'{URL_API}/{courseId}'
-    query = requests.patch(url_request, data=request)
+    url_request = f'{URL_API}/all'
+    query = requests.get(url_request, params={'collaborator': session[1]})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
@@ -163,60 +96,6 @@ async def get_students(courseId: UUID = Depends(owner_access)):
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
-@ router.post('/id/{courseId}/add_student/{userId}')
-async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
-    '''
-    Agrega un usuario a un curso. 
-    Permisos necesarios: ser el dueño del curso o un admin.
-    '''
-    url_request = f'{URL_API}/{courseId}/add_student/{userId}'
-    query = requests.post(url_request)
-    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
-
-
-@ router.post('/id/{courseId}/enroll')
-async def enroll_student(courseId: UUID, userId: UUID = Depends(validate_subscription)):
-    '''
-    Da de alta a un curso al usuario logueado actualemnte, solo si su subscripción es suficiente.
-    '''
-    url_request = f'{URL_API}/{courseId}/add_student/{userId}'
-    query = requests.post(url_request)
-    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
-
-
-@ router.delete('/id/{courseId}/remove_student/{userId}')
-async def remove_student(userId: UUID, courseId: UUID = Depends(owner_access)):
-    '''
-    Da de baja un usuario de un curso.
-    Permisos necesarios: ser el dueño del curso o un admin.
-    '''
-    url_request = f'{URL_API}/{courseId}/remove_student/{userId}'
-    query = requests.delete(url_request)
-    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
-
-
-@ router.delete('/id/{courseId}/unsubscribe')
-async def unsubscribe_student(courseId: UUID, session=Depends(validate_session_token)):
-    '''
-    Da de baja de un curso al usuario logueado.
-    '''
-    url_request = f'{URL_API}/{courseId}/remove_student/{session[1]}'
-    query = requests.delete(url_request)
-    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
-
-
 @ router.get('/id/{courseId}/collaborators')
 async def get_collaborators(courseId: UUID = Depends(owner_access)):
     '''
@@ -225,6 +104,48 @@ async def get_collaborators(courseId: UUID = Depends(owner_access)):
     '''
     url_request = f'{URL_API}/{courseId}/collaborators'
     query = requests.get(url_request)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.patch('/id/{courseId}')
+async def update(request: CourseUpdate, courseId: UUID = Depends(owner_access)):
+    '''
+    Actualiza los campos especificados que sean no nulos.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
+    url_request = f'{URL_API}/{courseId}'
+    query = requests.patch(url_request, data=request)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.post('')
+async def create(newCourse: CourseCreate, session=Depends(validate_session_token)):
+    '''
+    Permisos necesarios: cualquier usuario válido puede crear un curso.
+    '''
+    url_request = URL_API
+    newCourse = newCourse.copy(update={'owner': session[1]})
+    query = requests.post(url_request, data=newCourse.json())
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.post('/id/{courseId}/add_student/{userId}')
+async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
+    '''
+    Agrega un usuario a un curso. 
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
+    url_request = f'{URL_API}/{courseId}/add_student/{userId}'
+    query = requests.post(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
@@ -245,6 +166,61 @@ async def add_collaborator(userId: UUID, courseId: UUID = Depends(owner_access))
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
+@ router.post('/id/{courseId}/enroll')
+async def enroll_student(courseId: UUID, userId: UUID = Depends(validate_subscription)):
+    '''
+    Da de alta a un curso al usuario logueado actualemnte, solo si su subscripción es suficiente.
+    '''
+    url_request = f'{URL_API}/{courseId}/add_student/{userId}'
+    query = requests.post(url_request)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.post('/id/{courseId}/add_hashtags')
+async def add_hashtags(tags: List[str], courseId: UUID = Depends(owner_access)):
+    '''
+    Agrega los hashtags a un curso.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
+    url_request = f'{URL_API}/{courseId}/add_hashtags'
+    hashtags = {'tags': tags}
+    query = requests.post(url_request, json=hashtags)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.delete('/id/{courseId}', summary='Delete course')
+async def delete(courseId: UUID = Depends(owner_access)):
+    '''
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
+    url_request = f'{URL_API}/{courseId}'
+    query = requests.delete(url_request)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.delete('/id/{courseId}/remove_student/{userId}')
+async def remove_student(userId: UUID, courseId: UUID = Depends(owner_access)):
+    '''
+    Da de baja un usuario de un curso.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
+    url_request = f'{URL_API}/{courseId}/remove_student/{userId}'
+    query = requests.delete(url_request)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
 @ router.delete('/id/{courseId}/remove_collaborator/{userId}')
 async def remove_collaborator(userId: UUID, courseId: UUID = Depends(owner_access)):
     '''
@@ -252,6 +228,19 @@ async def remove_collaborator(userId: UUID, courseId: UUID = Depends(owner_acces
     Permisos necesarios: ser el dueño del curso o un admin.
     '''
     url_request = f'{URL_API}/{courseId}/remove_collaborator/{userId}'
+    query = requests.delete(url_request)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.delete('/id/{courseId}/unsubscribe')
+async def unsubscribe_student(courseId: UUID, session=Depends(validate_session_token)):
+    '''
+    Da de baja de un curso al usuario logueado.
+    '''
+    url_request = f'{URL_API}/{courseId}/remove_student/{session[1]}'
     query = requests.delete(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
@@ -272,34 +261,6 @@ async def unsubscribe_collaborator(courseId: UUID, session=Depends(validate_sess
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
-@ router.get('/id/{courseId}/hashtags')
-async def get_hashtags(courseId: UUID):
-    '''
-    Muestra la lista de hashtags del curso.
-    Permisos necesarios: es información pública.
-    '''
-    url_request = f'{URL_API}/{courseId}/hashtags'
-    query = requests.get(url_request)
-    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
-
-
-@ router.post('/id/{courseId}/add_hashtags')
-async def add_hashtags(tags: List[str], courseId: UUID = Depends(owner_access)):
-    '''
-    Agrega los hashtags a un curso.
-    Permisos necesarios: ser el dueño del curso o un admin.
-    '''
-    url_request = f'{URL_API}/{courseId}/add_hashtags'
-    query = requests.post(url_request, json=tags)
-    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
-
-
 @ router.delete('/id/{courseId}/remove_hashtags')
 async def remove_hashtags(tags: List[str], courseId: UUID = Depends(owner_access)):
     '''
@@ -307,7 +268,8 @@ async def remove_hashtags(tags: List[str], courseId: UUID = Depends(owner_access
     Permisos necesarios: ser el dueño del curso o un admin.
     '''
     url_request = f'{URL_API}/{courseId}/remove_hashtags'
-    query = requests.delete(url_request, json=tags)
+    hashtags = {'tags': tags}
+    query = requests.delete(url_request, json=hashtags)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')

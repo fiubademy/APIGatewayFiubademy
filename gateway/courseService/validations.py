@@ -78,17 +78,17 @@ def get_user_sub_level(userId):
     query = requests.get(url_request)
     if query.status_code != status.HTTP_200_OK:
         raise HTTPException(status_code=query.status_code,
-                            detail=query.content)
+                            detail='Failed to reach backend.')
     return query.json()['sub_level']
 
 
 def get_course_sub_level(courseId):
-    url_request = f'{URL_API}/{courseId}'
-    query = requests.get(url_request)
+    url_request = f'{URL_API}/all/1'
+    query = requests.get(url_request, params={'courseId': courseId})
     if query.status_code != status.HTTP_200_OK:
         raise HTTPException(status_code=query.status_code,
-                            detail=query.content)
-    return query.json()['sub_level']
+                            detail='Failed to reach backend.')
+    return query.json()['content'][0]['sub_level']
 
 
 def validate_subscription(courseId: UUID, session=Depends(validate_session_token)):

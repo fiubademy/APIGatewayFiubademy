@@ -24,16 +24,20 @@ class CourseUpdate(BaseModel):
 class CourseFilter:
     def __init__(
         self,
+        id: Optional[UUID] = None,
         name: Optional[str] = None,
         owner: Optional[UUID] = None,
         description: Optional[str] = None,
         sub_level: Optional[int] = None,
         latitude: Optional[float] = None,
-        longitude: Optional[float] = None
+        longitude: Optional[float] = None,
+        hashtag: Optional[str] = None
     ):
+        self.id = id
         self.name = name
         self.owner = owner
         self.description = description
         self.sub_level = sub_level
         self.latitude = latitude
         self.longitude = longitude
+        self.hashtag = hashtag
