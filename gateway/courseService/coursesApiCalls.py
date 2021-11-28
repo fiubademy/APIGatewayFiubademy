@@ -1,4 +1,5 @@
 from fastapi.exceptions import HTTPException
+from fastapi.param_functions import Query
 from starlette.responses import JSONResponse
 from typing import List
 from fastapi import Depends, APIRouter, status
@@ -13,10 +14,7 @@ router = APIRouter(dependencies=[Depends(validate_session_token)])
 
 
 @router.get('/all/{page_num}')
-async def get_courses(
-    page_num: int,
-    filter: CourseFilter = Depends()
-):
+async def get_courses(page_num: int, filter: CourseFilter = Depends()):
     '''
     Muestra todos los cursos que cumplan los filtros. Se muestran paginados de a 5 elementos.
     '''
@@ -28,13 +26,13 @@ async def get_courses(
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
-@ router.get('/student/{userId}')
-async def get_by_student(userId: UUID, _=Depends(admin_access)):
+@ router.get('/student/{userId}/{pagenum}')
+async def get_by_student(pagenum: int, userId: UUID, _=Depends(admin_access)):
     '''
     Muestra los cursos del usuario especificado.
     Permisos necesarios: admin.
     '''
-    url_request = f'{URL_API}/all'
+    url_request = f'{URL_API}/all/{pagenum}'
     query = requests.get(url_request, params={'student': userId})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
@@ -42,12 +40,12 @@ async def get_by_student(userId: UUID, _=Depends(admin_access)):
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
-@ router.get('/my_courses')
-async def get_my_courses(session=Depends(validate_session_token)):
+@ router.get('/my_courses/{pagenum}')
+async def get_my_courses(pagenum: int, session=Depends(validate_session_token)):
     '''
     Muestra los cursos del usuario logueado actualmente.
     '''
-    url_request = f'{URL_API}/all'
+    url_request = f'{URL_API}/all/{pagenum}'
     query = requests.get(url_request, params={'student': session[1]})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
@@ -55,13 +53,13 @@ async def get_my_courses(session=Depends(validate_session_token)):
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
-@ router.get('/collaborator/{userId}')
-async def get_by_collaborator(userId: UUID, _=Depends(admin_access)):
+@ router.get('/collaborator/{userId}/{pagenum}')
+async def get_by_collaborator(pagenum: int, userId: UUID, _=Depends(admin_access)):
     '''
     Muestra todos los cursos en los que el usuario especificado está inscripto como colaborador.
     Permisos necesarios: admin.
     '''
-    url_request = f'{URL_API}/all'
+    url_request = f'{URL_API}/all/{pagenum}'
     query = requests.get(url_request, params={'collaborator': userId})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
@@ -69,13 +67,27 @@ async def get_by_collaborator(userId: UUID, _=Depends(admin_access)):
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
-@ router.get('/collaborator/my_courses')
-async def get_collaborator_my_courses(session=Depends(validate_session_token)):
+@ router.get('/collaborator/my_courses/{pagenum}')
+async def get_collaborator_my_courses(pagenum: int, session=Depends(validate_session_token)):
+    '''
+    Muestra los cursos donde está como colaborador el usuario logueado actualmente.
+    '''
+    url_request = f'{URL_API}/all/{pagenum}'
+    query = requests.get(url_request, params={'collaborator': session[1]})
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+
+@ router.get('/owner/my_courses/{pagenum}')
+async def get_my_courses_owned(pagenum: int, session=Depends(validate_session_token)):
     '''  
     Muestra los cursos donde está como colaborador el usuario logueado actualmente.
     '''
-    url_request = f'{URL_API}/all'
-    query = requests.get(url_request, params={'collaborator': session[1]})
+    url_request = f'{URL_API}/all/{pagenum}'
+    query = requests.get(url_request, params={'ownerId': session[1]})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
