@@ -2,7 +2,7 @@ import requests
 from uuid import UUID
 from fastapi import HTTPException, status, Depends
 from gateway.userService.UsersApiCalls import checkAdminSessionToken, checkSessionToken, setSubscription
-from gateway.userService.UsersApiCalls import URL_API as URL_API_USERS
+from gateway.userService.UsersApiCalls import URL_API_USUARIOS as URL_API_USERS
 from courseService.setupCourseApi import URL_API
 
 

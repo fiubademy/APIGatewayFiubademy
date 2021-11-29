@@ -22,7 +22,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-URL_API = 'https://api-usuarios-fiubademy.herokuapp.com/users'
+URL_API_USUARIOS = 'https://api-usuarios-fiubademy.herokuapp.com/users'
 SESSION_EXPIRATION_TIME_IN_MINUTES = 30
 
 router = APIRouter()
@@ -117,7 +117,7 @@ def deleteTokenUser(user_id):
 
 @router.get('/{page_num}')
 async def getUsers(page_num: int, emailFilter: Optional[str] = '', usernameFilter: Optional[str] = ''):
-    url_request = URL_API + '/' + str(page_num)
+    url_request = URL_API_USUARIOS + '/' + str(page_num)
     query_params_quantity = 0
     if emailFilter != '' or usernameFilter != '':
         url_request = url_request + '?'
@@ -134,26 +134,26 @@ async def getUsers(page_num: int, emailFilter: Optional[str] = '', usernameFilte
 
 @router.get('/ID/{user_id}', status_code=status.HTTP_200_OK)
 async def getUser(user_id=''):
-    url_request = URL_API + '/ID/' + user_id
+    url_request = URL_API_USUARIOS + '/ID/' + user_id
     query = requests.get(url_request)
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
 @router.post('/get_token', status_code=status.HTTP_200_OK)
 async def getTokenForRecPasswd(email: str):
-    url_request = URL_API + '/get_token'
+    url_request = URL_API_USUARIOS + '/get_token'
     query = requests.post(url_request, params={'email': email})
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
 @router.post('/login')
 async def loginUser(email: str, password: str):
-    url_request_user = URL_API + '/1?' + 'emailFilter=' + email
+    url_request_user = URL_API_USUARIOS + '/1?' + 'emailFilter=' + email
     query_user = requests.get(url_request_user)
     if query_user.status_code == status.HTTP_200_OK:
         if query_user.json()['content'][0]['is_blocked'] == 'Y':
             return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content="User " + email + " is currently blocked and can not be logged in.")
-    url_request = URL_API + '/login'
+    url_request = URL_API_USUARIOS + '/login'
     retorno = requests.post(url_request, params={
                             'email': email, 'password': password})
     if retorno.status_code == status.HTTP_202_ACCEPTED:
@@ -164,7 +164,7 @@ async def loginUser(email: str, password: str):
 
 @router.post('/', status_code=status.HTTP_201_CREATED)
 async def createUser(username: str, email: EmailStr, password: str):
-    url_request = URL_API + '/'
+    url_request = URL_API_USUARIOS + '/'
     retorno = requests.post(url_request, params={
                             'username': username, 'email': email, 'password': password})
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
@@ -172,7 +172,7 @@ async def createUser(username: str, email: EmailStr, password: str):
 
 @router.post('/createAdmin', status_code=status.HTTP_201_CREATED)
 async def createAdmin(username: str, email: EmailStr, password: str):
-    url_request = URL_API + '/createAdmin'
+    url_request = URL_API_USUARIOS + '/createAdmin'
     retorno = requests.post(url_request, params={
                             'username': username, 'email': email, 'password': password})
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
@@ -182,10 +182,10 @@ async def createAdmin(username: str, email: EmailStr, password: str):
 async def deleteUser(session_token: str):
     tokenExists, tokenExpired, user_id = checkSessionToken(session_token)
     if not tokenExists:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token does not exist')
+        return JSONResponse(status_code=498, content='Session Token does not exist')
     if tokenExpired:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token expired.')
-    url_request = URL_API + '/' + user_id
+        return JSONResponse(status_code=498, content='Session Token expired.')
+    url_request = URL_API_USUARIOS + '/' + user_id
     retorno = requests.delete(url_request)
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
@@ -194,10 +194,10 @@ async def deleteUser(session_token: str):
 async def patchUser(session_token: str, email: Optional[str] = None, username: Optional[str] = None):
     tokenExists, tokenExpired, user_id = checkSessionToken(session_token)
     if not tokenExists:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token does not exist')
+        return JSONResponse(status_code=498, content='Session Token does not exist')
     if tokenExpired:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token expired.')
-    url_request = URL_API + '/' + user_id
+        return JSONResponse(status_code=498, content='Session Token expired.')
+    url_request = URL_API_USUARIOS + '/' + user_id
     retorno = requests.patch(url_request, params={
                              'email': email, 'username': username})
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
@@ -207,10 +207,10 @@ async def patchUser(session_token: str, email: Optional[str] = None, username: O
 async def changePassword(session_token: str, oldPassword: str, newPassword: str):
     tokenExists, tokenExpired, user_id = checkSessionToken(session_token)
     if not tokenExists:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token does not exist')
+        return JSONResponse(status_code=498, content='Session Token does not exist')
     if tokenExpired:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token expired.')
-    url_request = URL_API + '/changePassword/' + user_id
+        return JSONResponse(status_code=498, content='Session Token expired.')
+    url_request = URL_API_USUARIOS + '/changePassword/' + user_id
     retorno = requests.patch(url_request, params={
                              'oldPassword': oldPassword, 'newPassword': newPassword})
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
@@ -218,9 +218,10 @@ async def changePassword(session_token: str, oldPassword: str, newPassword: str)
 
 @router.patch('/recoverPassword/{token}')
 async def recoverPassword(newPassword: str, token: str):
-    url_request = URL_API + '/recoverPassword/' + token
+    url_request = URL_API_USUARIOS + '/recoverPassword/' + token
     retorno = requests.patch(url_request, params={
                              'newPassword': newPassword, 'token': token})
+    print(retorno)
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
 
@@ -228,10 +229,10 @@ async def recoverPassword(newPassword: str, token: str):
 async def setSubscription(session_token: str, sub_level: int):
     tokenExists, tokenExpired, user_id = checkSessionToken(session_token)
     if not tokenExists:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token does not exist')
+        return JSONResponse(status_code=498, content='Session Token does not exist')
     if tokenExpired:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token expired.')
-    url_request = URL_API + '/' + user_id + '/set_sub'
+        return JSONResponse(status_code=498, content='Session Token expired.')
+    url_request = URL_API_USUARIOS + '/' + user_id + '/set_sub'
     retorno = requests.patch(url_request, params={
                              'user_id': user_id, 'sub_level': sub_level})
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
@@ -241,10 +242,10 @@ async def setSubscription(session_token: str, sub_level: int):
 async def setLocation(session_token: str, latitude: float, longitude: float):
     tokenExists, tokenExpired, user_id = checkSessionToken(session_token)
     if not tokenExists:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token does not exist')
+        return JSONResponse(status_code=498, content='Session Token does not exist')
     if tokenExpired:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token expired.')
-    url_request = URL_API + '/' + user_id + '/set_location'
+        return JSONResponse(status_code=498, content='Session Token expired.')
+    url_request = URL_API_USUARIOS + '/' + user_id + '/set_location'
     retorno = requests.patch(url_request, params={
                              'user_id': user_id, 'latitude': latitude, 'longitude': longitude})
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
@@ -255,18 +256,18 @@ async def toggleBlockUser(user_id: str, admin_ses_token: str):
     tokenExists, tokenExpired, user_id_admin = checkAdminSessionToken(
         admin_ses_token)
     if not tokenExists:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Admin Session Token does not exist')
+        return JSONResponse(status_code=498, content='Admin Session Token does not exist')
     if tokenExpired:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Admin Session Token expired.')
+        return JSONResponse(status_code=498, content='Admin Session Token expired.')
     deleteTokenUser(user_id)
-    url_request = URL_API + '/' + user_id + '/toggleBlock'
+    url_request = URL_API_USUARIOS + '/' + user_id + '/toggleBlock'
     retorno = requests.patch(url_request, params={'user_id': user_id})
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
 
 @router.post('/loginAdmin')
 async def loginAdmin(email: str, password: str):
-    url_request = URL_API + '/loginAdmin'
+    url_request = URL_API_USUARIOS + '/loginAdmin'
     retorno = requests.post(url_request, params={
                             'email': email, 'password': password})
     if retorno.status_code == status.HTTP_202_ACCEPTED:
@@ -276,7 +277,7 @@ async def loginAdmin(email: str, password: str):
 
 @router.post('/loginGoogle')
 async def loginGoogle(idGoogle: str, username: str, email: str):
-    url_request = URL_API + '/loginGoogle'
+    url_request = URL_API_USUARIOS + '/loginGoogle'
     retorno = requests.post(url_request, params={
                             'idGoogle': idGoogle, 'username': username, 'email': email})
     if retorno.status_code == status.HTTP_202_ACCEPTED or retorno.status_code == status.HTTP_201_CREATED:
@@ -289,10 +290,10 @@ async def loginGoogle(idGoogle: str, username: str, email: str):
 async def deleteGoogle(idGoogle: str, sessionToken: str):
     tokenExists, tokenExpired, user_id = checkSessionToken(sessionToken)
     if not tokenExists:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token does not exist')
+        return JSONResponse(status_code=498, content='Session Token does not exist')
     if tokenExpired:
-        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content='Session Token expired.')
-    url_request = URL_API + '/deleteGoogle/' + idGoogle
+        return JSONResponse(status_code=498, content='Session Token expired.')
+    url_request = URL_API_USUARIOS + '/deleteGoogle/' + idGoogle
     retorno = requests.delete(url_request)
     if retorno.status_code == status.HTTP_200_OK:
         deleteTokenUser(retorno.json())
@@ -308,4 +309,4 @@ async def logout(sessionToken: str):
     if not user_id:
         return JSONResponse(status_code=498, content='Invalid session token.')
     deleteTokenUser(user_id)
-    return JSONResponse(status_code=HTTP_200_OK, content='Log out succesfull.')
+    return JSONResponse(status_code=HTTP_200_OK, content='Log out succesful.')

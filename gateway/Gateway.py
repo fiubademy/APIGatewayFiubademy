@@ -7,6 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from gateway.DataBase import Base, engine
 from gateway.userService import UsersApiCalls
 from gateway.courseService import coursesApiCalls, setupCourseApi
+from gateway.examService import ExamsApiCalls
 
 origins = ["*"]
 
@@ -14,6 +15,7 @@ app = FastAPI()
 
 UsersApiCalls.set_engine(engine)
 setupCourseApi.set_engine(engine)
+ExamsApiCalls.set_engine(engine)
 
 
 app.add_middleware(
@@ -26,6 +28,7 @@ app.add_middleware(
 
 app.include_router(UsersApiCalls.router, prefix="/users", tags=["Users"])
 app.include_router(coursesApiCalls.router, prefix="/courses", tags=["Courses"])
+app.include_router(ExamsApiCalls.router, prefix='/exams', tags=["Exams"])
 
 if __name__ == '__main__':
     Base.metadata.drop_all(engine)
