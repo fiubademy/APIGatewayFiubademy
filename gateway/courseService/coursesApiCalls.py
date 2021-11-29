@@ -1,5 +1,4 @@
 from fastapi.exceptions import HTTPException
-from fastapi.param_functions import Query
 from starlette.responses import JSONResponse
 from typing import List
 from fastapi import Depends, APIRouter, status
@@ -67,7 +66,7 @@ async def get_by_collaborator(pagenum: int, userId: UUID, _=Depends(admin_access
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
-@ router.get('/collaborator/my_courses/{pagenum}')
+@ router.get('/my_courses/collaborator/{pagenum}')
 async def get_collaborator_my_courses(pagenum: int, session=Depends(validate_session_token)):
     '''
     Muestra los cursos donde está como colaborador el usuario logueado actualmente.
@@ -80,7 +79,7 @@ async def get_collaborator_my_courses(pagenum: int, session=Depends(validate_ses
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
-@ router.get('/owner/my_courses/{pagenum}')
+@ router.get('/my_courses/owner/{pagenum}')
 async def get_my_courses_owned(pagenum: int, session=Depends(validate_session_token)):
     '''  
     Muestra los cursos donde está como colaborador el usuario logueado actualmente.
