@@ -35,7 +35,8 @@ class CourseFilter:
         sub_level: Optional[int] = None,
         latitude: Optional[float] = None,
         longitude: Optional[float] = None,
-        hashtag: Optional[str] = None
+        hashtag: Optional[str] = None,
+        minRating: Optional[int] = None
     ):
         self.id = id
         self.name = name
@@ -44,3 +45,4 @@ class CourseFilter:
         self.latitude = latitude
         self.longitude = longitude
         self.hashtag = hashtag
+        self.minRating = minRating

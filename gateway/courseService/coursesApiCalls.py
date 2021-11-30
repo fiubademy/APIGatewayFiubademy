@@ -15,7 +15,7 @@ router = APIRouter(dependencies=[Depends(validate_session_token)])
 @router.get('/all/{page_num}')
 async def get_courses(page_num: int, filter: CourseFilter = Depends()):
     '''
-    Muestra todos los cursos que cumplan los filtros. Se muestran paginados de a 5 elementos.
+    Muestra todos los cursos que cumplan los filtros. Se muestran usando paginación.
     '''
     url_request = f'{URL_API}/all/{page_num}'
     query = requests.get(url_request, params=filter.__dict__)
@@ -124,7 +124,7 @@ async def get_collaborators(courseId: UUID = Depends(owner_access)):
 async def get_reviews(self: bool, courseId: UUID, pagenum: Optional[int] = 1, session=Depends(validate_session_token)):
     '''
     Si el parámetro self es true devuelve la review cargada por el usuario en el curso especificado.
-    Si no, devuelve todas las reviews de dicho curso, paginadas de a 10 elementos.
+    Si no, devuelve todas las reviews de dicho curso, usando paginación.
 
     Permisos necesarios: solo tener un token sesión válido, es información pública.
     '''
