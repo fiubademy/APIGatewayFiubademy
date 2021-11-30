@@ -1,11 +1,11 @@
 from fastapi.exceptions import HTTPException
 from starlette.responses import JSONResponse
-from typing import List
+from typing import List, Optional
 from fastapi import Depends, APIRouter, status
 from uuid import UUID
 import requests
 
-from courseService.models import CourseCreate, CourseUpdate, CourseFilter
+from courseService.models import CourseCreate, CourseUpdate, CourseFilter, ReviewCreate
 from courseService.validations import admin_access, validate_session_token, owner_access, student_access, teacher_access, validate_subscription
 from courseService.setupCourseApi import URL_API
 
@@ -113,6 +113,25 @@ async def get_collaborators(courseId: UUID = Depends(owner_access)):
     Permisos necesarios: ser el dueño del curso o un admin.
     '''
     url_request = f'{URL_API}/{courseId}/collaborators'
+    query = requests.get(url_request)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.get('/id/{courseId}/reviews')
+async def get_reviews(self: bool, courseId: UUID, pagenum: Optional[int] = 1, session=Depends(validate_session_token)):
+    '''
+    Si el parámetro self es true devuelve la review cargada por el usuario en el curso especificado.
+    Si no, devuelve todas las reviews de dicho curso, paginadas de a 10 elementos.
+
+    Permisos necesarios: solo tener un token sesión válido, es información pública.
+    '''
+    if self:
+        url_request = f'{URL_API}/{courseId}/review/{session[1]}'
+    else:
+        url_request = f'{URL_API}/{courseId}/all_reviews/{pagenum}'
     query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
@@ -308,6 +327,22 @@ async def set_status(in_edition: bool, courseId: UUID = Depends(owner_access)):
     '''
     url_request = f'{URL_API}/{courseId}/status'
     query = requests.put(url_request, params={'in_edition': str(in_edition)})
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.put('/id/{courseId}/add_review')
+async def add_review(courseId: UUID, new: ReviewCreate, session=Depends(validate_session_token)):
+    '''
+    Agrega una nueva review al curso especificado, asociada al id del usuario logueado.    
+    Permisos necesarios: solo tener un token sesión válido, es una operación pública.
+    '''
+    url_request = f'{URL_API}/{courseId}/review'
+    new = new.dict()
+    new.update({'user_id': session[1]})
+    query = requests.put(url_request, json=new)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')

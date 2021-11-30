@@ -21,6 +21,11 @@ class CourseUpdate(BaseModel):
     longitude: Optional[float]
 
 
+class ReviewCreate(BaseModel):
+    description: Optional[str]
+    rating: int
+
+
 class CourseFilter:
     def __init__(
         self,
