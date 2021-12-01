@@ -5,7 +5,7 @@ from fastapi import Depends, APIRouter, status
 from uuid import UUID
 import requests
 
-from courseService.models import CourseCreate, CourseUpdate, CourseFilter, ReviewCreate
+from courseService.models import CourseCreate, CourseUpdate, CourseFilter, ReviewCreate, ContentCreate
 from courseService.validations import admin_access, validate_session_token, owner_access, student_access, teacher_access, validate_subscription
 from courseService.setupCourseApi import URL_API
 
@@ -140,6 +140,20 @@ async def get_reviews(self: bool, courseId: UUID, pagenum: Optional[int] = 1, se
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
+@ router.get('/id/{courseId}/get_content_list')
+async def get_content_list(courseId: UUID = Depends(student_access)):
+    '''
+    Devuelve la lista de contenidos del curso.
+    Permisos necesarios: estar inscripto al curso, o bien ser el dueño o un admin.
+    '''
+    url_request = f'{URL_API}/{courseId}/get_content_list'
+    query = requests.get(url_request)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
 @ router.patch('/id/{courseId}')
 async def update(request: CourseUpdate, courseId: UUID = Depends(owner_access)):
     '''
@@ -199,7 +213,8 @@ async def add_collaborator(userId: UUID, courseId: UUID = Depends(owner_access))
 @ router.post('/id/{courseId}/enroll')
 async def enroll_student(courseId: UUID, userId: UUID = Depends(validate_subscription)):
     '''
-    Da de alta a un curso al usuario logueado actualemnte, solo si su subscripción es suficiente.
+    Da de alta a un curso al usuario logueado actualemnte.
+    Permisos necesario: tener nivel de subscripción suficiente, según el curso.
     '''
     url_request = f'{URL_API}/{courseId}/add_student/{userId}'
     query = requests.post(url_request)
@@ -218,6 +233,20 @@ async def add_hashtags(tags: List[str], courseId: UUID = Depends(owner_access)):
     url_request = f'{URL_API}/{courseId}/add_hashtags'
     hashtags = {'tags': tags}
     query = requests.post(url_request, json=hashtags)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.post('/id/{courseId}/add_content')
+async def add_content(new: ContentCreate, courseId: UUID = Depends(owner_access)):
+    '''
+    Agregar un contenido (nombre y link a un video) a un curso.
+    Permisos necesarios: ser el dueño del curso o un admin.
+    '''
+    url_request = f'{URL_API}/{courseId}/add_content'
+    query = requests.post(url_request, data=new.json())
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
@@ -300,6 +329,20 @@ async def remove_hashtags(tags: List[str], courseId: UUID = Depends(owner_access
     url_request = f'{URL_API}/{courseId}/remove_hashtags'
     hashtags = {'tags': tags}
     query = requests.delete(url_request, json=hashtags)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.delete('id/{courseId}/remove_content/{contentId}')
+async def remove_content(contentId: str, _=Depends(owner_access)):
+    '''
+    Elimina de un curso un contenido según si id (obtenido desde get_content_list).
+    Permisos necesarios: ser dueño del curso o un admin.
+    '''
+    url_request = f'{URL_API}/remove_content/{contentId}'
+    query = requests.delete(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
