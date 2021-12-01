@@ -40,7 +40,7 @@ async def get_by_student(pagenum: int, userId: UUID, _=Depends(admin_access)):
 
 
 @ router.get('/my_courses/{pagenum}')
-async def get_my_courses(pagenum: int, courseId: Optional[UUID], session=Depends(validate_session_token)):
+async def get_my_courses(pagenum: int, courseId: Optional[UUID] = None, session=Depends(validate_session_token)):
     '''
     Muestra los cursos del usuario logueado actualmente.
     '''
