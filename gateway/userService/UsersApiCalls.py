@@ -4,7 +4,7 @@ import uuid
 
 from starlette.status import HTTP_200_OK
 from gateway.models.modelsGateway import SessionToken, AdminSessionToken
-from fastapi import status, Body
+from fastapi import status, Body, HTTPException
 from typing import List, Optional
 from pydantic import EmailStr
 from starlette.responses import JSONResponse
@@ -44,6 +44,21 @@ def set_engine(engine_rcvd):
     Session = sessionmaker(bind=engine)
     session = Session()
 
+
+def check_user_blocked(email):
+    url_request_user = URL_API_USUARIOS + '/1?' + 'emailFilter=' + email
+    query_user = requests.get(url_request_user)
+    if query_user.status_code == status.HTTP_200_OK:
+        for user in query_user.json()['content']:
+            if user['email'] == email:
+                if user['is_blocked'] == 'Y':
+                    return JSONResponse(
+                        status_code=status.HTTP_403_FORBIDDEN, 
+                        content="User " + email + " is currently blocked and can not be logged in."
+                    )
+                else:
+                    return None
+            
 
 def checkSessionToken(sessionToken: str):
     try:
@@ -148,11 +163,11 @@ async def getTokenForRecPasswd(email: str = Body(default = None, embed=True)):
 
 @router.post('/login')
 async def loginUser(email: str = Body(default = None, embed=True), password: str = Body(default = None, embed=True)):
-    url_request_user = URL_API_USUARIOS + '/1?' + 'emailFilter=' + email
-    query_user = requests.get(url_request_user)
-    if query_user.status_code == status.HTTP_200_OK:
-        if query_user.json()['content'][0]['is_blocked'] == 'Y':
-            return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content="User " + email + " is currently blocked and can not be logged in.")
+    blocked_response = check_user_blocked(email)
+    if blocked_response != None:
+        return blocked_response
+    if blocked_response != None:
+        return blocked_response
     url_request = URL_API_USUARIOS + '/login'
     retorno = requests.post(url_request, params={
                             'email': email, 'password': password})
@@ -267,6 +282,9 @@ async def toggleBlockUser(user_id: str, admin_ses_token: str = Body(default = No
 
 @router.post('/loginAdmin')
 async def loginAdmin(email: str = Body(default = None, embed=True), password: str = Body(default = None, embed=True)):
+    blocked_response = check_user_blocked(email)
+    if blocked_response != None:
+        return blocked_response
     url_request = URL_API_USUARIOS + '/loginAdmin'
     retorno = requests.post(url_request, params={
                             'email': email, 'password': password})
@@ -277,6 +295,9 @@ async def loginAdmin(email: str = Body(default = None, embed=True), password: st
 
 @router.post('/loginGoogle')
 async def loginGoogle(idGoogle: str = Body(default = None, embed=True), username: str = Body(default = None, embed=True), email: str = Body(default = None, embed=True)):
+    blocked_response = check_user_blocked(email)
+    if blocked_response != None:
+        return blocked_response
     url_request = URL_API_USUARIOS + '/loginGoogle'
     retorno = requests.post(url_request, params={
                             'idGoogle': idGoogle, 'username': username, 'email': email})
