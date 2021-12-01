@@ -10,6 +10,7 @@ class CourseCreate(BaseModel):
     sub_level: Optional[int]
     latitude: Optional[float]
     longitude: Optional[float]
+    category: Optional[str]
 
 
 class CourseUpdate(BaseModel):
@@ -19,11 +20,17 @@ class CourseUpdate(BaseModel):
     sub_level: Optional[int]
     latitude: Optional[float]
     longitude: Optional[float]
+    category: Optional[str]
 
 
 class ReviewCreate(BaseModel):
     description: Optional[str]
     rating: int
+
+
+class ContentCreate(BaseModel):
+    name: str
+    link: str
 
 
 class CourseFilter:
@@ -36,7 +43,8 @@ class CourseFilter:
         latitude: Optional[float] = None,
         longitude: Optional[float] = None,
         hashtag: Optional[str] = None,
-        minRating: Optional[int] = None
+        minRating: Optional[int] = None,
+        category: Optional[str] = None
     ):
         self.id = id
         self.name = name
@@ -46,3 +54,4 @@ class CourseFilter:
         self.longitude = longitude
         self.hashtag = hashtag
         self.minRating = minRating
+        self.category = category
