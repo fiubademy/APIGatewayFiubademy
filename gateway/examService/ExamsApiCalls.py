@@ -6,7 +6,7 @@ from typing import List, Optional
 from starlette.responses import JSONResponse
 from sqlalchemy.sql import null
 from sqlalchemy.orm import sessionmaker
-from fastapi import APIRouter
+from fastapi import APIRouter, Body
 from datetime import datetime, timedelta
 from examService.ModelsExams import questionsContent
 import sys
@@ -74,7 +74,7 @@ async def getExamById(exam_id: str, session=Depends(validate_session_token)):
 
 
 @router.post('/create_exam/{courseId}')
-async def createExam(courseId: str, questionsList: List[questionsContent], examDate: datetime, examTitle: str, session=Depends(owner_access)):
+async def createExam(courseId: str, questionsList: List[questionsContent], examDate: datetime = Body(default = None, embed=True), examTitle: str = Body(default = None, embed=True), session=Depends(owner_access)):
     data = parseQuestionsData(questionsList)
     query = requests.post(
         URL_API_EXAMENES+'/create_exam/'+courseId+'?examDate='+examDate.strftime("%Y-%m-%dT%H:%M:%S")+'&examTitle='+examTitle,
@@ -106,7 +106,7 @@ async def getStudentResponseForQuestion (question_id: str, user_id: str, courseI
 
 
 @router.patch('/edit_exam/{exam_id}')
-async def editExam(exam_id:str, courseId:str, exam_date:datetime = None, exam_title: str = None, session=Depends(owner_access)):
+async def editExam(exam_id:str, courseId:str, exam_date:datetime = Body(default = None, embed=True), exam_title: str = Body(default = None, embed=True), session=Depends(owner_access)):
     url = URL_API_EXAMENES+'/edit_exam/'+exam_id
     if exam_date != None:
         url += '?exam_date='+exam_date.strftime("%Y-%m-%dT%H:%M:%S")
@@ -137,7 +137,7 @@ async def editExamQuestions(question_id:str, question_content: questionsContent,
 
 
 @router.post('/{exam_id}/answer/{question_id}')
-async def postAnswersExam(exam_id:str , question_id: str, user_id:str, courseId:str, response_content: Optional[str] = None , choice_number: Optional[int] = None, session=Depends(student_access)):
+async def postAnswersExam(exam_id:str , question_id: str, user_id:str, courseId:str, response_content: Optional[str] = Body(default = None, embed=True) , choice_number: Optional[int] = Body(default = None, embed=True), session=Depends(student_access)):
     url = URL_API_EXAMENES+'/'+exam_id+'/answer/'+question_id
     if (response_content != None and choice_number != None) or (response_content == None and choice_number == None):
         return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content="Error: You need to specify only response content or choice number and not both.")
@@ -209,7 +209,7 @@ async def addQuestion(exam_id: str , question: questionsContent, courseId:str, s
 
 
 @router.post('/{exam_id}/qualify/{user_id}')
-async def qualifyExam(user_id: str, exam_id: str, mark: float, courseId:str, comments: str, session=Depends(teacher_access)):
+async def qualifyExam(user_id: str, exam_id: str, courseId:str, mark: float = Body(default = None, embed=True), comments: str = Body(default = None, embed=True), session=Depends(teacher_access)):
     query = requests.post(URL_API_EXAMENES+'/'+exam_id+'/qualify/'+user_id+'?mark='+str(mark)+'&comments='+comments)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(

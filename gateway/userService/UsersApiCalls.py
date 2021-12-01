@@ -4,7 +4,7 @@ import uuid
 
 from starlette.status import HTTP_200_OK
 from gateway.models.modelsGateway import SessionToken, AdminSessionToken
-from fastapi import status
+from fastapi import status, Body
 from typing import List, Optional
 from pydantic import EmailStr
 from starlette.responses import JSONResponse
@@ -140,14 +140,14 @@ async def getUser(user_id=''):
 
 
 @router.post('/get_token', status_code=status.HTTP_200_OK)
-async def getTokenForRecPasswd(email: str):
+async def getTokenForRecPasswd(email: str = Body(default = None, embed=True)):
     url_request = URL_API_USUARIOS + '/get_token'
     query = requests.post(url_request, params={'email': email})
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
 @router.post('/login')
-async def loginUser(email: str, password: str):
+async def loginUser(email: str = Body(default = None, embed=True), password: str = Body(default = None, embed=True)):
     url_request_user = URL_API_USUARIOS + '/1?' + 'emailFilter=' + email
     query_user = requests.get(url_request_user)
     if query_user.status_code == status.HTTP_200_OK:
@@ -163,7 +163,7 @@ async def loginUser(email: str, password: str):
 
 
 @router.post('/', status_code=status.HTTP_201_CREATED)
-async def createUser(username: str, email: EmailStr, password: str):
+async def createUser(username: str = Body(default = None, embed=True), email: EmailStr = Body(default = None, embed=True), password: str = Body(default = None, embed=True)):
     url_request = URL_API_USUARIOS + '/'
     retorno = requests.post(url_request, params={
                             'username': username, 'email': email, 'password': password})
@@ -171,7 +171,7 @@ async def createUser(username: str, email: EmailStr, password: str):
 
 
 @router.post('/createAdmin', status_code=status.HTTP_201_CREATED)
-async def createAdmin(username: str, email: EmailStr, password: str):
+async def createAdmin(username: str = Body(default = None, embed=True), email: EmailStr = Body(default = None, embed=True), password: str = Body(default = None, embed=True)):
     url_request = URL_API_USUARIOS + '/createAdmin'
     retorno = requests.post(url_request, params={
                             'username': username, 'email': email, 'password': password})
@@ -191,7 +191,7 @@ async def deleteUser(session_token: str):
 
 
 @router.patch('/{session_token}')
-async def patchUser(session_token: str, email: Optional[str] = None, username: Optional[str] = None):
+async def patchUser(session_token: str, email: Optional[str] = Body(default = None, embed=True), username: Optional[str] = Body(default = None, embed=True)):
     tokenExists, tokenExpired, user_id = checkSessionToken(session_token)
     if not tokenExists:
         return JSONResponse(status_code=498, content='Session Token does not exist')
@@ -204,7 +204,7 @@ async def patchUser(session_token: str, email: Optional[str] = None, username: O
 
 
 @router.patch('/changePassword/{session_token}')
-async def changePassword(session_token: str, oldPassword: str, newPassword: str):
+async def changePassword(session_token: str, oldPassword: str = Body(default = None, embed=True), newPassword: str = Body(default = None, embed=True)):
     tokenExists, tokenExpired, user_id = checkSessionToken(session_token)
     if not tokenExists:
         return JSONResponse(status_code=498, content='Session Token does not exist')
@@ -217,7 +217,7 @@ async def changePassword(session_token: str, oldPassword: str, newPassword: str)
 
 
 @router.patch('/recoverPassword/{token}')
-async def recoverPassword(newPassword: str, token: str):
+async def recoverPassword(token:str, newPassword: str = Body(default = None, embed=True)):
     url_request = URL_API_USUARIOS + '/recoverPassword/' + token
     retorno = requests.patch(url_request, params={
                              'newPassword': newPassword, 'token': token})
@@ -226,7 +226,7 @@ async def recoverPassword(newPassword: str, token: str):
 
 
 @router.patch('/{session_token}/set_sub')
-async def setSubscription(session_token: str, sub_level: int):
+async def setSubscription(session_token: str, sub_level: int = Body(default = None, embed=True)):
     tokenExists, tokenExpired, user_id = checkSessionToken(session_token)
     if not tokenExists:
         return JSONResponse(status_code=498, content='Session Token does not exist')
@@ -239,7 +239,7 @@ async def setSubscription(session_token: str, sub_level: int):
 
 
 @router.patch('/{session_token}/set_location')
-async def setLocation(session_token: str, latitude: float, longitude: float):
+async def setLocation(session_token: str, latitude: float = Body(default = None, embed=True), longitude: float = Body(default = None, embed=True)):
     tokenExists, tokenExpired, user_id = checkSessionToken(session_token)
     if not tokenExists:
         return JSONResponse(status_code=498, content='Session Token does not exist')
@@ -252,7 +252,7 @@ async def setLocation(session_token: str, latitude: float, longitude: float):
 
 
 @router.patch('/{user_id}/toggleBlock')
-async def toggleBlockUser(user_id: str, admin_ses_token: str):
+async def toggleBlockUser(user_id: str, admin_ses_token: str = Body(default = None, embed=True)):
     tokenExists, tokenExpired, user_id_admin = checkAdminSessionToken(
         admin_ses_token)
     if not tokenExists:
@@ -266,7 +266,7 @@ async def toggleBlockUser(user_id: str, admin_ses_token: str):
 
 
 @router.post('/loginAdmin')
-async def loginAdmin(email: str, password: str):
+async def loginAdmin(email: str = Body(default = None, embed=True), password: str = Body(default = None, embed=True)):
     url_request = URL_API_USUARIOS + '/loginAdmin'
     retorno = requests.post(url_request, params={
                             'email': email, 'password': password})
@@ -276,7 +276,7 @@ async def loginAdmin(email: str, password: str):
 
 
 @router.post('/loginGoogle')
-async def loginGoogle(idGoogle: str, username: str, email: str):
+async def loginGoogle(idGoogle: str = Body(default = None, embed=True), username: str = Body(default = None, embed=True), email: str = Body(default = None, embed=True)):
     url_request = URL_API_USUARIOS + '/loginGoogle'
     retorno = requests.post(url_request, params={
                             'idGoogle': idGoogle, 'username': username, 'email': email})
