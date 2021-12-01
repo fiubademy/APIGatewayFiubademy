@@ -40,12 +40,13 @@ async def get_by_student(pagenum: int, userId: UUID, _=Depends(admin_access)):
 
 
 @ router.get('/my_courses/{pagenum}')
-async def get_my_courses(pagenum: int, session=Depends(validate_session_token)):
+async def get_my_courses(pagenum: int, courseId: Optional[UUID], session=Depends(validate_session_token)):
     '''
     Muestra los cursos del usuario logueado actualmente.
     '''
     url_request = f'{URL_API}/all/{pagenum}'
-    query = requests.get(url_request, params={'student': session[1]})
+    query = requests.get(url_request, params={
+                         'student': session[1], 'id': courseId})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
