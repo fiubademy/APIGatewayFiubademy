@@ -147,7 +147,7 @@ async def get_content_list(courseId: UUID = Depends(student_access)):
     Permisos necesarios: estar inscripto al curso, o bien ser el dueño o un admin.
     '''
     url_request = f'{URL_API}/{courseId}/get_content_list'
-    query = requests.patch(url_request)
+    query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')

@@ -33,7 +33,7 @@ def validate_collaborator(userId, courseId):
     if query.status_code != status.HTTP_200_OK:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail='Failed to reach backend.')
-    return {'id': userId} in query.json()
+    return userId in query.json()
 
 
 def validate_student(userId, courseId):
@@ -42,7 +42,7 @@ def validate_student(userId, courseId):
     if query.status_code != status.HTTP_200_OK:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail='Failed to reach backend.')
-    return {'id': userId} in query.json()
+    return userId in query.json()
 
 
 def admin_access(session=Depends(validate_session_token)):
