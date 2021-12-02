@@ -5,6 +5,7 @@ import os
 from fastapi.middleware.cors import CORSMiddleware
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from gateway.DataBase import Base, engine
+from gateway.models.modelsGateway import *
 from gateway.userService import UsersApiCalls
 from gateway.courseService import coursesApiCalls, setupCourseApi
 from gateway.examService import ExamsApiCalls

@@ -1,6 +1,7 @@
 import requests
 import hashlib
 import uuid
+from uuid import UUID
 
 from starlette.status import HTTP_200_OK
 from gateway.models.modelsGateway import SessionToken, AdminSessionToken, LoginHistory, RecoverPasswordHistory, RegisteredUserHistory, BlockHistory
@@ -151,8 +152,8 @@ def store_login(user_id, is_federated):
         session.add(login_history)
         session.commit()
 
-def store_recover_password(user_id):
-    recover_history = RecoverPasswordHistory(user_id = user_id, date_recovered = datetime.now())
+def store_recover_password(token):
+    recover_history = RecoverPasswordHistory(token_used = token, date_recovered = datetime.now())
     session.add(recover_history)
     try:
         session.commit()
@@ -164,7 +165,7 @@ def store_recover_password(user_id):
 
 def store_register(user_id, is_federated):
     register_history = RegisteredUserHistory(user_id = user_id, date_created = datetime.now(), is_federated = is_federated)
-    session.add(recover_history)
+    session.add(register_history)
     try:
         session.commit()
     except Exception as e:
@@ -223,10 +224,11 @@ async def loginUser(email: str = Body(default = None, embed=True), password: str
 
 @router.post('/', status_code=status.HTTP_201_CREATED)
 async def createUser(username: str = Body(default = None, embed=True), email: EmailStr = Body(default = None, embed=True), password: str = Body(default = None, embed=True)):
-    store_register(user_id, 'N')
     url_request = URL_API_USUARIOS + '/'
     retorno = requests.post(url_request, params={
                             'username': username, 'email': email, 'password': password})
+    if retorno.status_code == 201:
+        store_register(retorno.json()['user_id'], 'N')
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
 
@@ -281,7 +283,8 @@ async def recoverPassword(token:str, newPassword: str = Body(default = None, emb
     url_request = URL_API_USUARIOS + '/recoverPassword/' + token
     retorno = requests.patch(url_request, params={
                              'newPassword': newPassword, 'token': token})
-    store_recover_password(user_id)
+    if retorno.status_code == 202:
+        store_recover_password(token)
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
 
@@ -343,10 +346,7 @@ async def loginAdmin(email: str = Body(default = None, embed=True), password: st
 
 @router.post('/loginGoogle')
 async def loginGoogle(idGoogle: str = Body(default = None, embed=True), username: str = Body(default = None, embed=True), email: str = Body(default = None, embed=True)):
-    if not session.query(RegisteredUserHistory).filter(RegisteredUserHistory.user_id == idGoogle).first():
-        store_register(idGoogle, 'Y')
-    else:
-        store_login(idGoogle, 'Y')
+    
     blocked_response = check_user_blocked(email)
     if blocked_response != None:
         return blocked_response
@@ -355,6 +355,12 @@ async def loginGoogle(idGoogle: str = Body(default = None, embed=True), username
                             'idGoogle': idGoogle, 'username': username, 'email': email})
     if retorno.status_code == status.HTTP_202_ACCEPTED or retorno.status_code == status.HTTP_201_CREATED:
         dict_return = createSessionToken(retorno.json()['user_id'])
+
+        if retorno.status_code == status.HTTP_201_CREATED:
+            store_register(retorno.json()['user_id'], 'Y')
+        else:
+            store_login(retorno.json()['user_id'], 'Y')
+
         return JSONResponse(status_code=retorno.status_code, content={'sessionToken': dict_return['sessionToken'], 'user_id': retorno.json()['user_id'], 'idGoogle': idGoogle})
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
@@ -394,7 +400,7 @@ async def getLoginMetrics(number_of_days:int):
     return JSONResponse(
         status_code = status.HTTP_200_OK, 
         content = {
-            'date_since':datetime.now()- timedelta(number_of_days),
+            'date_since':(datetime.now()- timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'),
             'number_federated': count_federated,
             'number_non_federated': count_non_federated
         }
@@ -405,12 +411,12 @@ async def getLoginMetrics(number_of_days:int):
 async def getRegisterMetrics(number_of_days:int):
     count_non_federated = session.query(RegisteredUserHistory).filter(
         RegisteredUserHistory.is_federated == 'N').filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days)).count()
-    count_federated = session.query(LoginHistory).filter(
+    count_federated = session.query(RegisteredUserHistory).filter(
         RegisteredUserHistory.is_federated == 'Y').filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days)).count()
     return JSONResponse(
         status_code = status.HTTP_200_OK, 
         content = {
-            'date_since':datetime.now()-timedelta(number_of_days),
+            'date_since':(datetime.now()-timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'),
             'number_federated': count_federated,
             'number_non_federated': count_non_federated
         }
@@ -423,8 +429,8 @@ async def getBlockMetrics(number_of_days:int):
     return JSONResponse(
         status_code = status.HTTP_200_OK, 
         content = {
-            'date_since':datetime.now()-timedelta(number_of_days),
-            'number_blocked': count_federated
+            'date_since':(datetime.now()-timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'),
+            'number_blocked': count_blocked
         }
     );
 
@@ -435,7 +441,7 @@ async def getPasswordRecoveryMetrics(number_of_days:int):
     return JSONResponse(
         status_code = status.HTTP_200_OK, 
         content = {
-            'date_since':datetime.now()-timedelta(number_of_days),
+            'date_since':(datetime.now()-timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'),
             'number_recoveries': count_recoveries,
         }
     );

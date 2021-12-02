@@ -5,7 +5,7 @@ from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, F
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from DataBase import Base
+from DataBase import Base, engine
 
 
 class SessionToken(Base):
@@ -49,11 +49,11 @@ class LoginHistory(Base):
 
 class RecoverPasswordHistory(Base):
     __tablename__ = "recover_password_history"
-    user_id = Column(String(500), nullable = False, primary_key = True)
+    token_used = Column(String(500), nullable = False, primary_key = True)
     date_recovered = Column(DateTime, primary_key = True, nullable = False)
 
     def __str__(self):
-        return (self.user_id, self.date_recovered)
+        return (self.token_used, self.date_recovered)
 
 
 class BlockHistory(Base):
