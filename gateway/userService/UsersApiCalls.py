@@ -3,7 +3,7 @@ import hashlib
 import uuid
 
 from starlette.status import HTTP_200_OK
-from gateway.models.modelsGateway import SessionToken, AdminSessionToken
+from gateway.models.modelsGateway import SessionToken, AdminSessionToken, LoginHistory, RecoverPasswordHistory, RegisteredUserHistory, BlockHistory
 from fastapi import status, Body, HTTPException
 from typing import List, Optional
 from pydantic import EmailStr
@@ -130,6 +130,49 @@ def deleteTokenUser(user_id):
     session.commit()
 
 
+def store_block(user_id):
+    block_history = BlockHistory(user_id = user_id, date_blocked = datetime.now(), )
+    session.add(block_history)
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        session.add(block_history)
+        session.commit()
+
+
+def store_login(user_id, is_federated):
+    login_history = LoginHistory(user_id = user_id, date_logged = datetime.now(), is_federated = is_federated)
+    session.add(login_history)
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        session.add(login_history)
+        session.commit()
+
+def store_recover_password(user_id):
+    recover_history = RecoverPasswordHistory(user_id = user_id, date_recovered = datetime.now())
+    session.add(recover_history)
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        session.add(recover_history)
+        session.commit()
+
+
+def store_register(user_id, is_federated):
+    register_history = RegisteredUserHistory(user_id = user_id, date_created = datetime.now(), is_federated = is_federated)
+    session.add(recover_history)
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        session.add(register_history)
+        session.commit()
+
+
 @router.get('/{page_num}')
 async def getUsers(page_num: int, emailFilter: Optional[str] = '', usernameFilter: Optional[str] = ''):
     url_request = URL_API_USUARIOS + '/' + str(page_num)
@@ -172,6 +215,7 @@ async def loginUser(email: str = Body(default = None, embed=True), password: str
     retorno = requests.post(url_request, params={
                             'email': email, 'password': password})
     if retorno.status_code == status.HTTP_202_ACCEPTED:
+        store_login(retorno.json(), 'N')
         return JSONResponse(status_code=status.HTTP_200_OK, content=createSessionToken(retorno.json()))
     else:
         return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content=retorno.json())
@@ -179,6 +223,7 @@ async def loginUser(email: str = Body(default = None, embed=True), password: str
 
 @router.post('/', status_code=status.HTTP_201_CREATED)
 async def createUser(username: str = Body(default = None, embed=True), email: EmailStr = Body(default = None, embed=True), password: str = Body(default = None, embed=True)):
+    store_register(user_id, 'N')
     url_request = URL_API_USUARIOS + '/'
     retorno = requests.post(url_request, params={
                             'username': username, 'email': email, 'password': password})
@@ -236,7 +281,7 @@ async def recoverPassword(token:str, newPassword: str = Body(default = None, emb
     url_request = URL_API_USUARIOS + '/recoverPassword/' + token
     retorno = requests.patch(url_request, params={
                              'newPassword': newPassword, 'token': token})
-    print(retorno)
+    store_recover_password(user_id)
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
 
@@ -277,6 +322,9 @@ async def toggleBlockUser(user_id: str, admin_ses_token: str = Body(default = No
     deleteTokenUser(user_id)
     url_request = URL_API_USUARIOS + '/' + user_id + '/toggleBlock'
     retorno = requests.patch(url_request, params={'user_id': user_id})
+    query = requests.get(URL_API_USUARIOS+'/ID/'+user_id)
+    if query.status_code == 200 and query.json()['is_blocked'] == 'Y':
+        store_block(user_id)
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
 
@@ -295,6 +343,10 @@ async def loginAdmin(email: str = Body(default = None, embed=True), password: st
 
 @router.post('/loginGoogle')
 async def loginGoogle(idGoogle: str = Body(default = None, embed=True), username: str = Body(default = None, embed=True), email: str = Body(default = None, embed=True)):
+    if not session.query(RegisteredUserHistory).filter(RegisteredUserHistory.user_id == idGoogle).first():
+        store_register(idGoogle, 'Y')
+    else:
+        store_login(idGoogle, 'Y')
     blocked_response = check_user_blocked(email)
     if blocked_response != None:
         return blocked_response
@@ -331,3 +383,59 @@ async def logout(sessionToken: str):
         return JSONResponse(status_code=498, content='Invalid session token.')
     deleteTokenUser(user_id)
     return JSONResponse(status_code=HTTP_200_OK, content='Log out succesful.')
+
+
+@router.get('/metrics/logins/{number_of_days}')
+async def getLoginMetrics(number_of_days:int):
+    count_non_federated = session.query(LoginHistory).filter(
+        LoginHistory.is_federated == 'N').filter(LoginHistory.date_logged >= datetime.now()-timedelta(number_of_days)).count()
+    count_federated = session.query(LoginHistory).filter(
+        LoginHistory.is_federated == 'Y').filter(LoginHistory.date_logged >= datetime.now()-timedelta(number_of_days)).count()
+    return JSONResponse(
+        status_code = status.HTTP_200_OK, 
+        content = {
+            'date_since':datetime.now()- timedelta(number_of_days),
+            'number_federated': count_federated,
+            'number_non_federated': count_non_federated
+        }
+    );
+
+
+@router.get('/metrics/registers/{number_of_days}')
+async def getRegisterMetrics(number_of_days:int):
+    count_non_federated = session.query(RegisteredUserHistory).filter(
+        RegisteredUserHistory.is_federated == 'N').filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days)).count()
+    count_federated = session.query(LoginHistory).filter(
+        RegisteredUserHistory.is_federated == 'Y').filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days)).count()
+    return JSONResponse(
+        status_code = status.HTTP_200_OK, 
+        content = {
+            'date_since':datetime.now()-timedelta(number_of_days),
+            'number_federated': count_federated,
+            'number_non_federated': count_non_federated
+        }
+    );
+
+
+@router.get('/metrics/blocks/{number_of_days}')
+async def getBlockMetrics(number_of_days:int):
+    count_blocked = session.query(BlockHistory).filter(BlockHistory.date_blocked >= datetime.now()-timedelta(number_of_days)).count()
+    return JSONResponse(
+        status_code = status.HTTP_200_OK, 
+        content = {
+            'date_since':datetime.now()-timedelta(number_of_days),
+            'number_blocked': count_federated
+        }
+    );
+
+
+@router.get('/metrics/password_recoveries/{number_of_days}')
+async def getPasswordRecoveryMetrics(number_of_days:int):
+    count_recoveries = session.query(RecoverPasswordHistory).filter(RecoverPasswordHistory.date_recovered >= datetime.now()-timedelta(number_of_days)).count()
+    return JSONResponse(
+        status_code = status.HTTP_200_OK, 
+        content = {
+            'date_since':datetime.now()-timedelta(number_of_days),
+            'number_recoveries': count_recoveries,
+        }
+    );
