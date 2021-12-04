@@ -19,6 +19,7 @@ from sqlalchemy import insert
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 from fastapi import APIRouter
 from datetime import datetime, timedelta
 import sys
@@ -474,8 +475,9 @@ async def getBlockMetrics(number_of_days:int):
     f.set_figwidth(10)
     f.set_figheight(5)
     plt.plot(x, y, label='#Blocks')
+    plt.xticks(np.arange(0, number_of_days, step=int(number_of_days/16)+1))
     plt.legend()
-    plt.title("Number of total blocks in the last " + str(number_of_days) + " days.")
+    plt.title("Cantidad total de bloqueos en los últimos " + str(number_of_days) + " días.")
     buf = BytesIO()
     plt.savefig(buf, format='png')
     plt.close()
@@ -501,8 +503,9 @@ async def getPasswordRecoveryMetrics(number_of_days:int):
     f.set_figwidth(10)
     f.set_figheight(5)
     plt.plot(x, y, label='#Recoveries')
+    plt.xticks(np.arange(0, number_of_days, step=int(number_of_days/16)+1))
     plt.legend()
-    plt.title("Number of total password recoveries in the last " + str(number_of_days) + " days.")
+    plt.title("Cantidad de recuperaciones de contraseñas en los últimos " + str(number_of_days) + " días.")
     buf = BytesIO()
     plt.savefig(buf, format='png')
     plt.close()
@@ -536,9 +539,11 @@ async def getRegisterTimeline(number_of_days:int):
     f.set_figwidth(10)
     f.set_figheight(5)
     plt.plot(x, y_non_federated, label='#Registros no Federados')
+    plt.xticks(np.arange(0, number_of_days, step=int(number_of_days/16)+1))
     plt.plot(x, y_federated, label='#Registros Federados')
+    plt.xticks(np.arange(0, number_of_days, step=int(number_of_days/16)+1))
     plt.legend()
-    plt.title("Number of total registers in the last " + str(number_of_days) + " days.")
+    plt.title("Cantidad de registros totales en los últimos " + str(number_of_days) + " días.")
     buf = BytesIO()
     plt.savefig(buf, format='png')
     plt.close()
@@ -567,14 +572,16 @@ async def getLoginTimeline(number_of_days: int):
         x.append(day)
         y_federated.append(value_federated)
         y_non_federated.append(value_non_federated)
-        
+    
     f = plt.figure()
     f.set_figwidth(10)
     f.set_figheight(5)
     plt.plot(x, y_non_federated, label='#Login no Federados')
+    plt.xticks(np.arange(0, number_of_days, step=int(number_of_days/16)+1))
     plt.plot(x, y_federated, label='#Login Federados')
+    plt.xticks(np.arange(0, number_of_days, step=int(number_of_days/16)+1))
     plt.legend()
-    plt.title("Number of total logins in the last " + str(number_of_days) + " days.")
+    plt.title("Cantidad de logins en los útlimos " + str(number_of_days) + " días.")
     buf = BytesIO()
     plt.savefig(buf, format='png')
     plt.close()
