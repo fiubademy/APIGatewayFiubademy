@@ -1,14 +1,15 @@
 import requests
 import hashlib
 import uuid
+import numpy as np
 from uuid import UUID
-
+from io import BytesIO
 from starlette.status import HTTP_200_OK
 from gateway.models.modelsGateway import SessionToken, AdminSessionToken, LoginHistory, RecoverPasswordHistory, RegisteredUserHistory, BlockHistory
 from fastapi import status, Body, HTTPException
 from typing import List, Optional
 from pydantic import EmailStr
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, Float
 from sqlalchemy.sql import null
@@ -17,6 +18,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import insert
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
+import matplotlib.pyplot as plt
 from fastapi import APIRouter
 from datetime import datetime, timedelta
 import sys
@@ -391,57 +393,193 @@ async def logout(sessionToken: str):
     return JSONResponse(status_code=HTTP_200_OK, content='Log out succesful.')
 
 
-@router.get('/metrics/logins/{number_of_days}')
+def make_autopct(values):
+    def my_autopct(pct):
+        total = sum(values)
+        val = int(round(pct*total/100.0))
+        return '{p:.2f}%  ({v:d})'.format(p=pct,v=val)
+    return my_autopct
+
+
+@router.get('/metrics/logins/{number_of_days}/pie')
 async def getLoginMetrics(number_of_days:int):
     count_non_federated = session.query(LoginHistory).filter(
         LoginHistory.is_federated == 'N').filter(LoginHistory.date_logged >= datetime.now()-timedelta(number_of_days)).count()
     count_federated = session.query(LoginHistory).filter(
         LoginHistory.is_federated == 'Y').filter(LoginHistory.date_logged >= datetime.now()-timedelta(number_of_days)).count()
-    return JSONResponse(
-        status_code = status.HTTP_200_OK, 
-        content = {
-            'date_since':(datetime.now()- timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'),
-            'number_federated': count_federated,
-            'number_non_federated': count_non_federated
-        }
-    );
+    labels = []
+    values = []
+    if count_federated > 0:
+        labels.append('Logins Federados')
+        values.append(count_federated)
+    if count_non_federated > 0:
+        labels.append('Logins No Federados')
+        values.append(count_non_federated)
+    fig1, ax1 = plt.subplots()
+    ax1.pie(values, labels=labels, autopct=make_autopct(values),
+        shadow=True, startangle=90)
+    ax1.axis('equal')
+    buf = BytesIO()
+    plt.title(label='Cantidad de Logins desde '+(datetime.now()-timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'), pad=30)
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
 
 
-@router.get('/metrics/registers/{number_of_days}')
-async def getRegisterMetrics(number_of_days:int):
+@router.get('/metrics/registers/{number_of_days}/pie')
+async def getRegisterMetrics(number_of_days: int):
     count_non_federated = session.query(RegisteredUserHistory).filter(
         RegisteredUserHistory.is_federated == 'N').filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days)).count()
     count_federated = session.query(RegisteredUserHistory).filter(
         RegisteredUserHistory.is_federated == 'Y').filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days)).count()
-    return JSONResponse(
-        status_code = status.HTTP_200_OK, 
-        content = {
-            'date_since':(datetime.now()-timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'),
-            'number_federated': count_federated,
-            'number_non_federated': count_non_federated
-        }
-    );
+    labels = []
+    values = []
+    if count_federated > 0:
+        labels.append('Registros Federados')
+        values.append(count_federated)
+    if count_non_federated > 0:
+        labels.append('Registros No Federados')
+        values.append(count_non_federated)
+    fig1, ax1 = plt.subplots()
+    ax1.pie(values, labels=labels, autopct=make_autopct(values),
+        shadow=True, startangle=90)
+    ax1.axis('equal')
+    buf = BytesIO()
+    plt.title(label='Cantidad de Registros desde '+(datetime.now()-timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'), pad=30)
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
 
 
 @router.get('/metrics/blocks/{number_of_days}')
 async def getBlockMetrics(number_of_days:int):
-    count_blocked = session.query(BlockHistory).filter(BlockHistory.date_blocked >= datetime.now()-timedelta(number_of_days)).count()
-    return JSONResponse(
-        status_code = status.HTTP_200_OK, 
-        content = {
-            'date_since':(datetime.now()-timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'),
-            'number_blocked': count_blocked
-        }
-    );
+    x = []
+    y = []
+    for i in range(number_of_days):
+        day = (datetime.now()-timedelta(number_of_days-i-1)).strftime('%d/%m')
+        value = session.query(BlockHistory).filter(BlockHistory.date_blocked >= datetime.now()-timedelta(number_of_days-i)).filter(
+            BlockHistory.date_blocked <= datetime.now()-timedelta(number_of_days-i-1)).count()
+        value = value if len(y) == 0 else value + y[len(y)-1]
+        x.append(day)
+        y.append(value)
+    f = plt.figure()
+    f.set_figwidth(10)
+    f.set_figheight(5)
+    plt.plot(x, y, label='#Blocks')
+    plt.legend()
+    plt.title("Number of total blocks in the last " + str(number_of_days) + " days.")
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
 
 
 @router.get('/metrics/password_recoveries/{number_of_days}')
 async def getPasswordRecoveryMetrics(number_of_days:int):
-    count_recoveries = session.query(RecoverPasswordHistory).filter(RecoverPasswordHistory.date_recovered >= datetime.now()-timedelta(number_of_days)).count()
-    return JSONResponse(
-        status_code = status.HTTP_200_OK, 
-        content = {
-            'date_since':(datetime.now()-timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'),
-            'number_recoveries': count_recoveries,
-        }
-    );
+    x = []
+    y = []
+    for i in range(number_of_days):
+        day = (datetime.now()-timedelta(number_of_days-i-1)).strftime('%d/%m')
+        value = session.query(RecoverPasswordHistory).filter(RecoverPasswordHistory.date_recovered >= datetime.now()-timedelta(number_of_days-i)).filter(
+            RecoverPasswordHistory.date_recovered <= datetime.now()-timedelta(number_of_days-i-1)).count()
+        value = value if len(y) == 0 else value + y[len(y)-1]
+        x.append(day)
+        y.append(value)
+    f = plt.figure()
+    f.set_figwidth(10)
+    f.set_figheight(5)
+    plt.plot(x, y, label='#Recoveries')
+    plt.legend()
+    plt.title("Number of total password recoveries in the last " + str(number_of_days) + " days.")
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
+
+
+@router.get('/metrics/registers/{number_of_days}/linear')
+async def getRegisterTimeline(number_of_days:int):
+    x = []
+    y_federated = []
+    y_non_federated = []
+    for i in range(number_of_days):
+        day = (datetime.now()-timedelta(number_of_days-i-1)).strftime('%d/%m')
+        value_federated = session.query(RegisteredUserHistory).filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days-i)).filter(
+            RegisteredUserHistory.date_created <= datetime.now()-timedelta(number_of_days-i-1)).filter(RegisteredUserHistory.is_federated == 'Y').count()
+        value_federated = value_federated if len(y_federated) == 0 else value_federated + y_federated[len(y_federated)-1]
+
+
+        value_non_federated = session.query(RegisteredUserHistory).filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days-i)).filter(
+            RegisteredUserHistory.date_created <= datetime.now()-timedelta(number_of_days-i-1)).filter(LoginHistory.is_federated != 'Y').count()
+        value_non_federated = value_non_federated if len(y_non_federated) == 0 else value_non_federated + y_non_federated[len(y_non_federated)-1]
+        x.append(day)
+        y_federated.append(value_federated)
+        y_non_federated.append(value_non_federated)
+        
+    f = plt.figure()
+    f.set_figwidth(10)
+    f.set_figheight(5)
+    plt.plot(x, y_non_federated, label='#Registros no Federados')
+    plt.plot(x, y_federated, label='#Registros Federados')
+    plt.legend()
+    plt.title("Number of total registers in the last " + str(number_of_days) + " days.")
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
+
+
+@router.get('/metrics/logins/{number_of_days}/linear')
+async def getLoginTimeline(number_of_days: int):
+    x = []
+    y_federated = []
+    y_non_federated = []
+    for i in range(number_of_days):
+        day = (datetime.now()-timedelta(number_of_days-i-1)).strftime('%d/%m')
+        value_federated = session.query(LoginHistory).filter(LoginHistory.date_logged >= datetime.now()-timedelta(number_of_days-i)).filter(
+            LoginHistory.date_logged <= datetime.now()-timedelta(number_of_days-i-1)).filter(LoginHistory.is_federated == 'Y').count()
+        value_federated = value_federated if len(y_federated) == 0 else value_federated + y_federated[len(y_federated)-1]
+
+
+        value_non_federated = session.query(LoginHistory).filter(LoginHistory.date_logged >= datetime.now()-timedelta(number_of_days-i)).filter(
+            LoginHistory.date_logged <= datetime.now()-timedelta(number_of_days-i-1)).filter(LoginHistory.is_federated != 'Y').count()
+        value_non_federated = value_non_federated if len(y_non_federated) == 0 else value_non_federated + y_non_federated[len(y_non_federated)-1]
+        x.append(day)
+        y_federated.append(value_federated)
+        y_non_federated.append(value_non_federated)
+        
+    f = plt.figure()
+    f.set_figwidth(10)
+    f.set_figheight(5)
+    plt.plot(x, y_non_federated, label='#Login no Federados')
+    plt.plot(x, y_federated, label='#Login Federados')
+    plt.legend()
+    plt.title("Number of total logins in the last " + str(number_of_days) + " days.")
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
