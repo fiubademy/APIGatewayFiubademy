@@ -1,13 +1,15 @@
 import requests
 import hashlib
 import uuid
-
+import numpy as np
+from uuid import UUID
+from io import BytesIO
 from starlette.status import HTTP_200_OK
-from gateway.models.modelsGateway import SessionToken, AdminSessionToken
+from gateway.models.modelsGateway import SessionToken, AdminSessionToken, LoginHistory, RecoverPasswordHistory, RegisteredUserHistory, BlockHistory
 from fastapi import status, Body, HTTPException
 from typing import List, Optional
 from pydantic import EmailStr
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, Float
 from sqlalchemy.sql import null
@@ -16,6 +18,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import insert
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
+import matplotlib.pyplot as plt
 from fastapi import APIRouter
 from datetime import datetime, timedelta
 import sys
@@ -130,6 +133,49 @@ def deleteTokenUser(user_id):
     session.commit()
 
 
+def store_block(user_id):
+    block_history = BlockHistory(user_id = user_id, date_blocked = datetime.now(), )
+    session.add(block_history)
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        session.add(block_history)
+        session.commit()
+
+
+def store_login(user_id, is_federated):
+    login_history = LoginHistory(user_id = user_id, date_logged = datetime.now(), is_federated = is_federated)
+    session.add(login_history)
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        session.add(login_history)
+        session.commit()
+
+def store_recover_password(token):
+    recover_history = RecoverPasswordHistory(token_used = token, date_recovered = datetime.now())
+    session.add(recover_history)
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        session.add(recover_history)
+        session.commit()
+
+
+def store_register(user_id, is_federated):
+    register_history = RegisteredUserHistory(user_id = user_id, date_created = datetime.now(), is_federated = is_federated)
+    session.add(register_history)
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        session.add(register_history)
+        session.commit()
+
+
 @router.get('/{page_num}')
 async def getUsers(page_num: int, emailFilter: Optional[str] = '', usernameFilter: Optional[str] = ''):
     url_request = URL_API_USUARIOS + '/' + str(page_num)
@@ -172,6 +218,7 @@ async def loginUser(email: str = Body(default = None, embed=True), password: str
     retorno = requests.post(url_request, params={
                             'email': email, 'password': password})
     if retorno.status_code == status.HTTP_202_ACCEPTED:
+        store_login(retorno.json(), 'N')
         return JSONResponse(status_code=status.HTTP_200_OK, content=createSessionToken(retorno.json()))
     else:
         return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content=retorno.json())
@@ -182,6 +229,8 @@ async def createUser(username: str = Body(default = None, embed=True), email: Em
     url_request = URL_API_USUARIOS + '/'
     retorno = requests.post(url_request, params={
                             'username': username, 'email': email, 'password': password})
+    if retorno.status_code == 201:
+        store_register(retorno.json()['user_id'], 'N')
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
 
@@ -236,7 +285,8 @@ async def recoverPassword(token:str, newPassword: str = Body(default = None, emb
     url_request = URL_API_USUARIOS + '/recoverPassword/' + token
     retorno = requests.patch(url_request, params={
                              'newPassword': newPassword, 'token': token})
-    print(retorno)
+    if retorno.status_code == 202:
+        store_recover_password(token)
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
 
@@ -277,6 +327,9 @@ async def toggleBlockUser(user_id: str, admin_ses_token: str = Body(default = No
     deleteTokenUser(user_id)
     url_request = URL_API_USUARIOS + '/' + user_id + '/toggleBlock'
     retorno = requests.patch(url_request, params={'user_id': user_id})
+    query = requests.get(URL_API_USUARIOS+'/ID/'+user_id)
+    if query.status_code == 200 and query.json()['is_blocked'] == 'Y':
+        store_block(user_id)
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
 
@@ -295,6 +348,7 @@ async def loginAdmin(email: str = Body(default = None, embed=True), password: st
 
 @router.post('/loginGoogle')
 async def loginGoogle(idGoogle: str = Body(default = None, embed=True), username: str = Body(default = None, embed=True), email: str = Body(default = None, embed=True)):
+    
     blocked_response = check_user_blocked(email)
     if blocked_response != None:
         return blocked_response
@@ -303,6 +357,12 @@ async def loginGoogle(idGoogle: str = Body(default = None, embed=True), username
                             'idGoogle': idGoogle, 'username': username, 'email': email})
     if retorno.status_code == status.HTTP_202_ACCEPTED or retorno.status_code == status.HTTP_201_CREATED:
         dict_return = createSessionToken(retorno.json()['user_id'])
+
+        if retorno.status_code == status.HTTP_201_CREATED:
+            store_register(retorno.json()['user_id'], 'Y')
+        else:
+            store_login(retorno.json()['user_id'], 'Y')
+
         return JSONResponse(status_code=retorno.status_code, content={'sessionToken': dict_return['sessionToken'], 'user_id': retorno.json()['user_id'], 'idGoogle': idGoogle})
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
@@ -331,3 +391,195 @@ async def logout(sessionToken: str):
         return JSONResponse(status_code=498, content='Invalid session token.')
     deleteTokenUser(user_id)
     return JSONResponse(status_code=HTTP_200_OK, content='Log out succesful.')
+
+
+def make_autopct(values):
+    def my_autopct(pct):
+        total = sum(values)
+        val = int(round(pct*total/100.0))
+        return '{p:.2f}%  ({v:d})'.format(p=pct,v=val)
+    return my_autopct
+
+
+@router.get('/metrics/logins/{number_of_days}/pie')
+async def getLoginMetrics(number_of_days:int):
+    count_non_federated = session.query(LoginHistory).filter(
+        LoginHistory.is_federated == 'N').filter(LoginHistory.date_logged >= datetime.now()-timedelta(number_of_days)).count()
+    count_federated = session.query(LoginHistory).filter(
+        LoginHistory.is_federated == 'Y').filter(LoginHistory.date_logged >= datetime.now()-timedelta(number_of_days)).count()
+    labels = []
+    values = []
+    if count_federated > 0:
+        labels.append('Logins Federados')
+        values.append(count_federated)
+    if count_non_federated > 0:
+        labels.append('Logins No Federados')
+        values.append(count_non_federated)
+    fig1, ax1 = plt.subplots()
+    ax1.pie(values, labels=labels, autopct=make_autopct(values),
+        shadow=True, startangle=90)
+    ax1.axis('equal')
+    buf = BytesIO()
+    plt.title(label='Cantidad de Logins desde '+(datetime.now()-timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'), pad=30)
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
+
+
+@router.get('/metrics/registers/{number_of_days}/pie')
+async def getRegisterMetrics(number_of_days: int):
+    count_non_federated = session.query(RegisteredUserHistory).filter(
+        RegisteredUserHistory.is_federated == 'N').filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days)).count()
+    count_federated = session.query(RegisteredUserHistory).filter(
+        RegisteredUserHistory.is_federated == 'Y').filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days)).count()
+    labels = []
+    values = []
+    if count_federated > 0:
+        labels.append('Registros Federados')
+        values.append(count_federated)
+    if count_non_federated > 0:
+        labels.append('Registros No Federados')
+        values.append(count_non_federated)
+    fig1, ax1 = plt.subplots()
+    ax1.pie(values, labels=labels, autopct=make_autopct(values),
+        shadow=True, startangle=90)
+    ax1.axis('equal')
+    buf = BytesIO()
+    plt.title(label='Cantidad de Registros desde '+(datetime.now()-timedelta(number_of_days)).strftime('%d/%m/%Y %H:%M:%S'), pad=30)
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
+
+
+@router.get('/metrics/blocks/{number_of_days}')
+async def getBlockMetrics(number_of_days:int):
+    x = []
+    y = []
+    for i in range(number_of_days):
+        day = (datetime.now()-timedelta(number_of_days-i-1)).strftime('%d/%m')
+        value = session.query(BlockHistory).filter(BlockHistory.date_blocked >= datetime.now()-timedelta(number_of_days-i)).filter(
+            BlockHistory.date_blocked <= datetime.now()-timedelta(number_of_days-i-1)).count()
+        value = value if len(y) == 0 else value + y[len(y)-1]
+        x.append(day)
+        y.append(value)
+    f = plt.figure()
+    f.set_figwidth(10)
+    f.set_figheight(5)
+    plt.plot(x, y, label='#Blocks')
+    plt.legend()
+    plt.title("Number of total blocks in the last " + str(number_of_days) + " days.")
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
+
+
+@router.get('/metrics/password_recoveries/{number_of_days}')
+async def getPasswordRecoveryMetrics(number_of_days:int):
+    x = []
+    y = []
+    for i in range(number_of_days):
+        day = (datetime.now()-timedelta(number_of_days-i-1)).strftime('%d/%m')
+        value = session.query(RecoverPasswordHistory).filter(RecoverPasswordHistory.date_recovered >= datetime.now()-timedelta(number_of_days-i)).filter(
+            RecoverPasswordHistory.date_recovered <= datetime.now()-timedelta(number_of_days-i-1)).count()
+        value = value if len(y) == 0 else value + y[len(y)-1]
+        x.append(day)
+        y.append(value)
+    f = plt.figure()
+    f.set_figwidth(10)
+    f.set_figheight(5)
+    plt.plot(x, y, label='#Recoveries')
+    plt.legend()
+    plt.title("Number of total password recoveries in the last " + str(number_of_days) + " days.")
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
+
+
+@router.get('/metrics/registers/{number_of_days}/linear')
+async def getRegisterTimeline(number_of_days:int):
+    x = []
+    y_federated = []
+    y_non_federated = []
+    for i in range(number_of_days):
+        day = (datetime.now()-timedelta(number_of_days-i-1)).strftime('%d/%m')
+        value_federated = session.query(RegisteredUserHistory).filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days-i)).filter(
+            RegisteredUserHistory.date_created <= datetime.now()-timedelta(number_of_days-i-1)).filter(RegisteredUserHistory.is_federated == 'Y').count()
+        value_federated = value_federated if len(y_federated) == 0 else value_federated + y_federated[len(y_federated)-1]
+
+
+        value_non_federated = session.query(RegisteredUserHistory).filter(RegisteredUserHistory.date_created >= datetime.now()-timedelta(number_of_days-i)).filter(
+            RegisteredUserHistory.date_created <= datetime.now()-timedelta(number_of_days-i-1)).filter(LoginHistory.is_federated != 'Y').count()
+        value_non_federated = value_non_federated if len(y_non_federated) == 0 else value_non_federated + y_non_federated[len(y_non_federated)-1]
+        x.append(day)
+        y_federated.append(value_federated)
+        y_non_federated.append(value_non_federated)
+        
+    f = plt.figure()
+    f.set_figwidth(10)
+    f.set_figheight(5)
+    plt.plot(x, y_non_federated, label='#Registros no Federados')
+    plt.plot(x, y_federated, label='#Registros Federados')
+    plt.legend()
+    plt.title("Number of total registers in the last " + str(number_of_days) + " days.")
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
+
+
+@router.get('/metrics/logins/{number_of_days}/linear')
+async def getLoginTimeline(number_of_days: int):
+    x = []
+    y_federated = []
+    y_non_federated = []
+    for i in range(number_of_days):
+        day = (datetime.now()-timedelta(number_of_days-i-1)).strftime('%d/%m')
+        value_federated = session.query(LoginHistory).filter(LoginHistory.date_logged >= datetime.now()-timedelta(number_of_days-i)).filter(
+            LoginHistory.date_logged <= datetime.now()-timedelta(number_of_days-i-1)).filter(LoginHistory.is_federated == 'Y').count()
+        value_federated = value_federated if len(y_federated) == 0 else value_federated + y_federated[len(y_federated)-1]
+
+
+        value_non_federated = session.query(LoginHistory).filter(LoginHistory.date_logged >= datetime.now()-timedelta(number_of_days-i)).filter(
+            LoginHistory.date_logged <= datetime.now()-timedelta(number_of_days-i-1)).filter(LoginHistory.is_federated != 'Y').count()
+        value_non_federated = value_non_federated if len(y_non_federated) == 0 else value_non_federated + y_non_federated[len(y_non_federated)-1]
+        x.append(day)
+        y_federated.append(value_federated)
+        y_non_federated.append(value_non_federated)
+        
+    f = plt.figure()
+    f.set_figwidth(10)
+    f.set_figheight(5)
+    plt.plot(x, y_non_federated, label='#Login no Federados')
+    plt.plot(x, y_federated, label='#Login Federados')
+    plt.legend()
+    plt.title("Number of total logins in the last " + str(number_of_days) + " days.")
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    buf.seek(0)
+    return StreamingResponse(
+        content = buf,
+        media_type="image/png"
+    )
