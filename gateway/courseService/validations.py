@@ -92,14 +92,14 @@ def student_access(courseId: UUID, session=Depends(validate_session_token)):
 
 
 def new_collaborator_access(courseId: UUID, session=Depends(validate_session_token)):
-    if is_owner(session[1], courseId) or is_collaborator(session[1], courseId) or is_student(session[1], courseId):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User is already in course.')
+    if is_owner(session[1], courseId) or is_student(session[1], courseId):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='User already has another role in course.')
     return session[1]
 
 
 def new_student_access(courseId: UUID, session=Depends(validate_session_token)):
-    if is_owner(session[1], courseId) or is_collaborator(session[1], courseId) or is_student(session[1], courseId):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User is already in course.')
+    if is_owner(session[1], courseId) or is_collaborator(session[1], courseId):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='User already has another role in course.')
     elif get_user_sub_level(session[1]) >= get_course_sub_level(courseId):
         return session[1]
     raise HTTPException(
