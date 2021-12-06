@@ -18,7 +18,7 @@ def validate_session_token(sessionToken: UUID):
     return False, userId
 
 
-def validate_owner(userId, courseId):
+def is_owner(userId, courseId):
     url_request = f'{URL_API}/{courseId}/owner'
     query = requests.get(url_request)
     if query.status_code != status.HTTP_200_OK:
@@ -27,7 +27,7 @@ def validate_owner(userId, courseId):
     return {'ownerId': userId} == query.json()
 
 
-def validate_collaborator(userId, courseId):
+def is_collaborator(userId, courseId):
     url_request = f'{URL_API}/{courseId}/collaborators'
     query = requests.get(url_request)
     if query.status_code != status.HTTP_200_OK:
@@ -36,40 +36,13 @@ def validate_collaborator(userId, courseId):
     return userId in query.json()
 
 
-def validate_student(userId, courseId):
+def is_student(userId, courseId):
     url_request = f'{URL_API}/{courseId}/students'
     query = requests.get(url_request)
     if query.status_code != status.HTTP_200_OK:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail='Failed to reach backend.')
     return userId in query.json()
-
-
-def admin_access(session=Depends(validate_session_token)):
-    if not session[0]:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized operation.")
-
-
-def owner_access(courseId: UUID, session=Depends(validate_session_token)):
-    if session[0] or validate_owner(session[1], courseId):
-        return courseId
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized operation.")
-
-
-def teacher_access(courseId: UUID, session=Depends(validate_session_token)):
-    if session[0] or validate_owner(session[1], courseId) or validate_collaborator(session[1], courseId):
-        return courseId
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized operation.")
-
-
-def student_access(courseId: UUID, session=Depends(validate_session_token)):
-    if session[0] or validate_student(session[1], courseId) or validate_owner(session[1], courseId):
-        return courseId
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized operation.")
 
 
 def get_user_sub_level(userId):
@@ -91,10 +64,43 @@ def get_course_sub_level(courseId):
     return query.json()['content'][0]['sub_level']
 
 
-def validate_subscription(courseId: UUID, session=Depends(validate_session_token)):
-    sub_level_ok = get_user_sub_level(
-        session[1]) >= get_course_sub_level(courseId)
-    if session[0] or validate_owner(session[1], courseId) or sub_level_ok:
+def admin_access(session=Depends(validate_session_token)):
+    if not session[0]:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized operation.")
+
+
+def owner_access(courseId: UUID, session=Depends(validate_session_token)):
+    if session[0] or is_owner(session[1], courseId):
+        return courseId
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized operation.")
+
+
+def teacher_access(courseId: UUID, session=Depends(validate_session_token)):
+    if session[0] or is_owner(session[1], courseId) or is_collaborator(session[1], courseId):
+        return courseId
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized operation.")
+
+
+def student_access(courseId: UUID, session=Depends(validate_session_token)):
+    if session[0] or is_student(session[1], courseId) or is_owner(session[1], courseId):
+        return courseId
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized operation.")
+
+
+def new_collaborator_access(courseId: UUID, session=Depends(validate_session_token)):
+    if is_owner(session[1], courseId) or is_collaborator(session[1], courseId) or is_student(session[1], courseId):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User is already in course.')
+    return session[1]
+
+
+def new_student_access(courseId: UUID, session=Depends(validate_session_token)):
+    if is_owner(session[1], courseId) or is_collaborator(session[1], courseId) or is_student(session[1], courseId):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User is already in course.')
+    elif get_user_sub_level(session[1]) >= get_course_sub_level(courseId):
         return session[1]
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN, detail="Subscription level unsatisfied.")

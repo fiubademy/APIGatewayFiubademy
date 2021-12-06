@@ -6,7 +6,7 @@ from uuid import UUID
 import requests
 
 from courseService.models import CourseCreate, CourseUpdate, CourseFilter, ReviewCreate, ContentCreate
-from courseService.validations import admin_access, validate_session_token, owner_access, student_access, teacher_access, validate_subscription
+from courseService.validations import admin_access, validate_session_token, owner_access, student_access, teacher_access, new_collaborator_access, new_student_access
 from courseService.setupCourseApi import URL_API
 
 router = APIRouter(dependencies=[Depends(validate_session_token)])
@@ -197,7 +197,7 @@ async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
 
 
 @ router.post('/id/{courseId}/add_collaborator/{userId}')
-async def add_collaborator(userId: UUID, courseId: UUID = Depends(owner_access)):
+async def add_collaborator(userId: UUID, courseId: UUID = Depends(new_collaborator_access)):
     '''
     Agrega al usuario como colaborador del curso.
     Permisos necesarios: ser el dueño del curso o un admin.
@@ -211,7 +211,7 @@ async def add_collaborator(userId: UUID, courseId: UUID = Depends(owner_access))
 
 
 @ router.post('/id/{courseId}/enroll')
-async def enroll_student(courseId: UUID, userId: UUID = Depends(validate_subscription)):
+async def enroll_student(courseId: UUID, userId: UUID = Depends(new_student_access)):
     '''
     Da de alta a un curso al usuario logueado actualemnte.
     Permisos necesario: tener nivel de subscripción suficiente, según el curso.
