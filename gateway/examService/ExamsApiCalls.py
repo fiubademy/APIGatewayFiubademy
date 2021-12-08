@@ -1,6 +1,7 @@
 import requests
 import hashlib
 import uuid
+from uuid import UUID
 from fastapi import status, Depends
 from typing import List, Optional
 from starlette.responses import JSONResponse
@@ -12,12 +13,15 @@ from examService.ModelsExams import questionsContent
 import sys
 import os
 from fastapi.exceptions import HTTPException
+
+from gateway.models.modelsGateway import SessionToken
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from courseService.validations import teacher_access, owner_access, validate_session_token, admin_access, student_access
 
 URL_API_EXAMENES = 'https://api-examenes-fiubademy.herokuapp.com/exams'
 
 router = APIRouter()
+
 Session = None
 session = None
 engine = None
@@ -217,4 +221,12 @@ async def qualifyExam(user_id: str, exam_id: str, courseId:str, mark: float = Bo
             detail='Failed to reach backend.'
         )
     return JSONResponse(status_code = query.status_code, content=query.json()) 
+
+
+@router.get('/{exam_id}/is_able_to_do_exam/{sessionToken}')
+async def is_able_to_do_exam(exam_id: str, sessionToken: str, course_id=Depends(student_access)):
+    user_id = session.query(SessionToken).filter(SessionToken.session_token == sessionToken).first().user_id
+    query = requests.get(URL_API_EXAMENES+'/'+exam_id+'/is_able_to_do_exam/'+user_id)
+    return JSONResponse(status_code = query.status_code, content=query.json())
+
 
