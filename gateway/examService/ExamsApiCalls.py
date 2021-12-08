@@ -224,7 +224,7 @@ async def qualifyExam(user_id: str, exam_id: str, courseId:str, mark: float = Bo
 
 
 @router.get('/{exam_id}/is_able_to_do_exam/{sessionToken}')
-async def is_able_to_do_exam(exam_id: str, sessionToken: str, session=Depends(student_access)):
+async def is_able_to_do_exam(exam_id: str, sessionToken: str, course_id=Depends(student_access)):
     user_id = session.query(SessionToken).filter(SessionToken.session_token == sessionToken).first().user_id
     query = requests.get(URL_API_EXAMENES+'/'+exam_id+'/is_able_to_do_exam/'+user_id)
     return JSONResponse(status_code = query.status_code, content=query.json())
