@@ -6,7 +6,7 @@ from uuid import UUID
 import requests
 
 from courseService.models import CourseCreate, CourseUpdate, CourseFilter, ReviewCreate, ContentCreate
-from courseService.validations import admin_access, validate_session_token, owner_access, student_access, teacher_access, new_collaborator_access, new_student_access
+from courseService.validations import admin_access, validate_session_token, owner_access, student_access, teacher_access, validate_new_collaborator, validate_new_student
 from courseService.setupCourseApi import URL_API
 
 router = APIRouter(dependencies=[Depends(validate_session_token)])
@@ -188,6 +188,7 @@ async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
     Agrega un usuario a un curso. 
     Permisos necesarios: ser el dueño del curso o un admin.
     '''
+    validate_new_student(courseId, userId)
     url_request = f'{URL_API}/{courseId}/add_student/{userId}'
     query = requests.post(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -197,11 +198,12 @@ async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
 
 
 @ router.post('/id/{courseId}/add_collaborator/{userId}')
-async def add_collaborator(userId: UUID, courseId: UUID = Depends(new_collaborator_access)):
+async def add_collaborator(userId: UUID, courseId: UUID = Depends(owner_access)):
     '''
     Agrega al usuario como colaborador del curso.
     Permisos necesarios: ser el dueño del curso o un admin.
     '''
+    validate_new_collaborator(courseId, userId)
     url_request = f'{URL_API}/{courseId}/add_collaborator/{userId}'
     query = requests.post(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -211,12 +213,13 @@ async def add_collaborator(userId: UUID, courseId: UUID = Depends(new_collaborat
 
 
 @ router.post('/id/{courseId}/enroll')
-async def enroll_student(courseId: UUID, userId: UUID = Depends(new_student_access)):
+async def enroll_student(courseId: UUID, session=Depends(validate_session_token)):
     '''
     Da de alta a un curso al usuario logueado actualemnte.
     Permisos necesario: tener nivel de subscripción suficiente, según el curso.
     '''
-    url_request = f'{URL_API}/{courseId}/add_student/{userId}'
+    validate_new_student(courseId, session[1])
+    url_request = f'{URL_API}/{courseId}/add_student/{session[1]}'
     query = requests.post(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(

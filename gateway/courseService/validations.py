@@ -91,16 +91,14 @@ def student_access(courseId: UUID, session=Depends(validate_session_token)):
         status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized operation.")
 
 
-def new_collaborator_access(courseId: UUID, session=Depends(validate_session_token)):
-    if is_owner(session[1], courseId) or is_student(session[1], courseId):
+def validate_new_collaborator(courseId: UUID, userId: UUID):
+    if is_owner(userId, courseId) or is_student(userId, courseId):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='User already has another role in course.')
-    return session[1]
 
 
-def new_student_access(courseId: UUID, session=Depends(validate_session_token)):
-    if is_owner(session[1], courseId) or is_collaborator(session[1], courseId):
+def validate_new_student(courseId: UUID, userId: UUID):
+    if is_owner(userId, courseId) or is_collaborator(userId, courseId):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='User already has another role in course.')
-    elif get_user_sub_level(session[1]) >= get_course_sub_level(courseId):
-        return session[1]
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN, detail="Subscription level unsatisfied.")
+    elif get_user_sub_level(userId) < get_course_sub_level(courseId):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Subscription level unsatisfied.")
