@@ -213,7 +213,7 @@ async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
-@ router.post('/id/{courseId}/add_collaborator/{userId}')
+@ router.post('/id/{courseId}/add_collaborator/{email}')
 async def add_collaborator(userId: UUID = Depends(user_by_email), courseId: UUID = Depends(owner_access)):
     '''
     Agrega al usuario como colaborador del curso.
