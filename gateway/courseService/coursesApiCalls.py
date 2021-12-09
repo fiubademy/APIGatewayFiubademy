@@ -68,12 +68,12 @@ async def get_by_collaborator(pagenum: int, userId: UUID, _=Depends(admin_access
 
 
 @ router.get('/my_courses/collaborator/{pagenum}')
-async def get_collaborator_my_courses(pagenum: int, session=Depends(validate_session_token)):
+async def get_collaborator_my_courses(pagenum: int, courseIdFilter: Optional[UUID] = None, session=Depends(validate_session_token)):
     '''
     Muestra los cursos donde está como colaborador el usuario logueado actualmente.
     '''
     url_request = f'{URL_API}/all/{pagenum}'
-    query = requests.get(url_request, params={'collaborator': session[1]})
+    query = requests.get(url_request, params={'collaborator': session[1], 'id': courseIdFilter})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
