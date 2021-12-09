@@ -154,6 +154,22 @@ async def get_content_list(courseId: UUID = Depends(student_access)):
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
+
+@ router.get('/my_fav_courses/{pagenum}')
+async def get_my_fav_courses(pagenum: int, session=Depends(validate_session_token)):
+    '''
+    Devuelve la lista de cursos favoritos del usuario logueado..
+    Permisos necesarios: solo tener un token sesión válido, es información pública.
+    '''
+    url_request = f'{URL_API}/all/{pagenum}'
+    query = requests.get(url_request, params={'faved_by': session[1]})
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+
 @ router.patch('/id/{courseId}')
 async def update(request: CourseUpdate, courseId: UUID = Depends(owner_access)):
     '''
@@ -394,3 +410,18 @@ async def add_review(courseId: UUID, new: ReviewCreate, session=Depends(validate
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
     return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.put('/new_fav')
+async def fav_course(fav: bool, courseId: UUID, session=Depends(validate_session_token)):
+    '''
+    Actualiza el estado de favorito de un curso especificado, para el usuario logueado.    
+    Permisos necesarios: solo tener un token sesión válido, es una operación pública.
+    '''
+    url_request = f'{URL_API}/new_fav/{session[1]}/{courseId}/{fav}'
+    query = requests.put(url_request)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
