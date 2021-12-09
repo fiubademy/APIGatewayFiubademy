@@ -6,7 +6,7 @@ from uuid import UUID
 import requests
 
 from courseService.models import CourseCreate, CourseUpdate, CourseFilter, ReviewCreate, ContentCreate
-from courseService.validations import admin_access, validate_session_token, owner_access, student_access, teacher_access, validate_subscription
+from courseService.validations import admin_access, validate_session_token, owner_access, student_access, teacher_access, validate_new_collaborator, validate_new_student, user_by_email
 from courseService.setupCourseApi import URL_API
 
 router = APIRouter(dependencies=[Depends(validate_session_token)])
@@ -68,12 +68,12 @@ async def get_by_collaborator(pagenum: int, userId: UUID, _=Depends(admin_access
 
 
 @ router.get('/my_courses/collaborator/{pagenum}')
-async def get_collaborator_my_courses(pagenum: int, session=Depends(validate_session_token)):
+async def get_collaborator_my_courses(pagenum: int, courseIdFilter: Optional[UUID] = None, session=Depends(validate_session_token)):
     '''
     Muestra los cursos donde está como colaborador el usuario logueado actualmente.
     '''
     url_request = f'{URL_API}/all/{pagenum}'
-    query = requests.get(url_request, params={'collaborator': session[1]})
+    query = requests.get(url_request, params={'collaborator': session[1], 'id': courseIdFilter})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
@@ -188,6 +188,7 @@ async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
     Agrega un usuario a un curso. 
     Permisos necesarios: ser el dueño del curso o un admin.
     '''
+    validate_new_student(courseId, userId)
     url_request = f'{URL_API}/{courseId}/add_student/{userId}'
     query = requests.post(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -197,11 +198,12 @@ async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
 
 
 @ router.post('/id/{courseId}/add_collaborator/{userId}')
-async def add_collaborator(userId: UUID, courseId: UUID = Depends(owner_access)):
+async def add_collaborator(userId: UUID = Depends(user_by_email), courseId: UUID = Depends(owner_access)):
     '''
     Agrega al usuario como colaborador del curso.
     Permisos necesarios: ser el dueño del curso o un admin.
     '''
+    validate_new_collaborator(courseId, userId)
     url_request = f'{URL_API}/{courseId}/add_collaborator/{userId}'
     query = requests.post(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
@@ -211,12 +213,13 @@ async def add_collaborator(userId: UUID, courseId: UUID = Depends(owner_access))
 
 
 @ router.post('/id/{courseId}/enroll')
-async def enroll_student(courseId: UUID, userId: UUID = Depends(validate_subscription)):
+async def enroll_student(courseId: UUID, session=Depends(validate_session_token)):
     '''
     Da de alta a un curso al usuario logueado actualemnte.
     Permisos necesario: tener nivel de subscripción suficiente, según el curso.
     '''
-    url_request = f'{URL_API}/{courseId}/add_student/{userId}'
+    validate_new_student(courseId, session[1])
+    url_request = f'{URL_API}/{courseId}/add_student/{session[1]}'
     query = requests.post(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
