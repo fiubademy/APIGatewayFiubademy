@@ -415,7 +415,7 @@ async def add_review(courseId: UUID, new: ReviewCreate, session=Depends(validate
 @ router.put('/new_fav')
 async def fav_course(fav: bool, courseId: UUID, session=Depends(validate_session_token)):
     '''
-    Agrega una nueva review al curso especificado, asociada al id del usuario logueado.    
+    Actualiza el estado de favorito de un curso especificado, para el usuario logueado.    
     Permisos necesarios: solo tener un token sesión válido, es una operación pública.
     '''
     url_request = f'{URL_API}/new_fav/{session[1]}/{courseId}/{fav}'
