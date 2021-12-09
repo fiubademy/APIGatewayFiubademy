@@ -156,13 +156,13 @@ async def get_content_list(courseId: UUID = Depends(student_access)):
 
 
 @ router.get('/my_fav_courses/{pagenum}')
-async def get_my_fav_courses(pagenum: int, session=Depends(validate_session_token)):
+async def get_my_fav_courses(pagenum: int, courseId: Optional[UUID] = None, session=Depends(validate_session_token)):
     '''
     Devuelve la lista de cursos favoritos del usuario logueado..
     Permisos necesarios: solo tener un token sesión válido, es información pública.
     '''
     url_request = f'{URL_API}/all/{pagenum}'
-    query = requests.get(url_request, params={'faved_by': session[1]})
+    query = requests.get(url_request, params={'faved_by': session[1], 'id': courseId})
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
