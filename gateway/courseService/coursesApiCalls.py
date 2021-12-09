@@ -6,7 +6,7 @@ from uuid import UUID
 import requests
 
 from courseService.models import CourseCreate, CourseUpdate, CourseFilter, ReviewCreate, ContentCreate
-from courseService.validations import admin_access, validate_session_token, owner_access, student_access, teacher_access, validate_new_collaborator, validate_new_student
+from courseService.validations import admin_access, validate_session_token, owner_access, student_access, teacher_access, validate_new_collaborator, validate_new_student, user_by_email
 from courseService.setupCourseApi import URL_API
 
 router = APIRouter(dependencies=[Depends(validate_session_token)])
@@ -198,7 +198,7 @@ async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
 
 
 @ router.post('/id/{courseId}/add_collaborator/{userId}')
-async def add_collaborator(userId: UUID, courseId: UUID = Depends(owner_access)):
+async def add_collaborator(userId: UUID = Depends(user_by_email), courseId: UUID = Depends(owner_access)):
     '''
     Agrega al usuario como colaborador del curso.
     Permisos necesarios: ser el dueño del curso o un admin.

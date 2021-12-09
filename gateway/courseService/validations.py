@@ -33,7 +33,7 @@ def is_collaborator(userId, courseId):
     if query.status_code != status.HTTP_200_OK:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail='Failed to reach backend.')
-    return userId in query.json()
+    return str(userId) in query.json()
 
 
 def is_student(userId, courseId):
@@ -42,7 +42,7 @@ def is_student(userId, courseId):
     if query.status_code != status.HTTP_200_OK:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                             detail='Failed to reach backend.')
-    return userId in query.json()
+    return str(userId) in query.json()
 
 
 def get_user_sub_level(userId):
@@ -51,7 +51,7 @@ def get_user_sub_level(userId):
     query = requests.get(url_request)
     if query.status_code != status.HTTP_200_OK:
         raise HTTPException(status_code=query.status_code,
-                            detail='Failed to reach backend.')
+                            detail=query.json())
     return query.json()['sub_level']
 
 
@@ -60,8 +60,17 @@ def get_course_sub_level(courseId):
     query = requests.get(url_request, params={'courseId': courseId})
     if query.status_code != status.HTTP_200_OK:
         raise HTTPException(status_code=query.status_code,
-                            detail='Failed to reach backend.')
+                            detail=query.json())
     return query.json()['content'][0]['sub_level']
+
+
+def user_by_email(email: str):
+    url_request_user = URL_API_USERS + '/1?' + 'emailFilter=' + email
+    query = requests.get(url_request_user)
+    if query.status_code != status.HTTP_200_OK:
+        raise HTTPException(status_code=query.status_code,
+                            detail=query.json())
+    return query.json()['content'][0]['user_id']
 
 
 def admin_access(session=Depends(validate_session_token)):
