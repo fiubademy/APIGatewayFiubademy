@@ -590,3 +590,17 @@ async def getLoginTimeline(number_of_days: int):
         content = buf,
         media_type="image/png"
     )
+
+
+@router.patch("/{sessionToken}/set_avatar/{num_avatar}")
+async def set_avatar(sessionToken:str, num_avatar:int):
+    _, _, user_id = checkSessionToken(sessionToken)
+    if not user_id:
+        _, _, user_id = checkAdminSessionToken(sessionToken)
+    if not user_id:
+        return JSONResponse(status_code=498, content='Invalid session token.')
+
+    url_request = URL_API_USUARIOS + '/'+user_id+'/set_avatar/' + str(num_avatar)
+    retorno = requests.patch(url_request)
+    
+    return JSONResponse(status_code = retorno.status_code, content = retorno.json())
