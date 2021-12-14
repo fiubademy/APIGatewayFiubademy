@@ -21,6 +21,7 @@ class CourseUpdate(BaseModel):
     latitude: Optional[float]
     longitude: Optional[float]
     category: Optional[str]
+    hashtags: Optional[List[str]]
 
 
 class ReviewCreate(BaseModel):
