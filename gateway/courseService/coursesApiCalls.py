@@ -177,7 +177,7 @@ async def update(request: CourseUpdate, courseId: UUID = Depends(owner_access)):
     Permisos necesarios: ser el dueño del curso o un admin.
     '''
     url_request = f'{URL_API}/{courseId}'
-    query = requests.patch(url_request, data=request)
+    query = requests.patch(url_request, data=request.json())
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
