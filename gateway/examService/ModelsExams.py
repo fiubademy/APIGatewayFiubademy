@@ -5,7 +5,7 @@ from typing import List, Optional
 class OptionForQuestionReturn(BaseModel):
     number: int
     content: str
-    correct: str
+    #correct: str
 
 
 class questionsContent(BaseModel):

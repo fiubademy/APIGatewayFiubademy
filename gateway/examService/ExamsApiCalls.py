@@ -16,7 +16,7 @@ from fastapi.exceptions import HTTPException
 
 from gateway.models.modelsGateway import SessionToken
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from courseService.validations import teacher_access, owner_access, validate_session_token, admin_access, student_access
+from courseService.validations import teacher_access, owner_access, validate_session_token, admin_access, student_access, only_student_access
 
 URL_API_EXAMENES = 'https://api-examenes-fiubademy.herokuapp.com/exams'
 
@@ -44,8 +44,8 @@ def parseQuestionIndividually(question: questionsContent):
         data +=',"choice_responses":['
         for choice_response in question.choice_responses:
             data += '{"number":' +str(choice_response.number)+','
-            data += '"content":"' + choice_response.content+'",'
-            data += '"correct":"' + choice_response.correct.upper() + '"},'
+            data += '"content":"' + choice_response.content+'"},'
+            #data += '"correct":"' + choice_response.correct.upper() + '"},'
         data = data[0:len(data)-1]+']'
     data += '}'
     return data
@@ -78,7 +78,7 @@ async def getExamById(exam_id: str, session=Depends(validate_session_token)):
 
 
 @router.post('/create_exam/{courseId}')
-async def createExam(courseId: str, questionsList: List[questionsContent], examDate: datetime = Body(default = None, embed=True), examTitle: str = Body(default = None, embed=True), session=Depends(owner_access)):
+async def createExam(courseId: str, questionsList: Optional[List[questionsContent]], examDate: datetime = Body(default = None, embed=True), examTitle: str = Body(default = None, embed=True), session=Depends(owner_access)):
     data = parseQuestionsData(questionsList)
     query = requests.post(
         URL_API_EXAMENES+'/create_exam/'+courseId+'?examDate='+examDate.strftime("%Y-%m-%dT%H:%M:%S")+'&examTitle='+examTitle,
@@ -141,7 +141,7 @@ async def editExamQuestions(question_id:str, question_content: questionsContent,
 
 
 @router.post('/{exam_id}/answer/{question_id}')
-async def postAnswersExam(exam_id:str , question_id: str, user_id:str, courseId:str, response_content: Optional[str] = Body(default = None, embed=True) , choice_number: Optional[int] = Body(default = None, embed=True), session=Depends(student_access)):
+async def postAnswersExam(exam_id:str , question_id: str, user_id:str, courseId:str, response_content: Optional[str] = Body(default = None, embed=True) , choice_number: Optional[int] = Body(default = None, embed=True), session=Depends(only_student_access)):
     url = URL_API_EXAMENES+'/'+exam_id+'/answer/'+question_id
     if (response_content != None and choice_number != None) or (response_content == None and choice_number == None):
         return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content="Error: You need to specify only response content or choice number and not both.")
@@ -224,9 +224,13 @@ async def qualifyExam(user_id: str, exam_id: str, courseId:str, mark: float = Bo
 
 
 @router.get('/{exam_id}/is_able_to_do_exam/{sessionToken}')
-async def is_able_to_do_exam(exam_id: str, sessionToken: str, course_id=Depends(student_access)):
+async def is_able_to_do_exam(exam_id: str, sessionToken: str, course_id=Depends(only_student_access)):
     user_id = session.query(SessionToken).filter(SessionToken.session_token == sessionToken).first().user_id
     query = requests.get(URL_API_EXAMENES+'/'+exam_id+'/is_able_to_do_exam/'+user_id)
     return JSONResponse(status_code = query.status_code, content=query.json())
 
 
+@router.patch('/{exam_id}/publish')
+async def publish_exam(exam_id: str, session=Depends(owner_access)):
+    query = requests.patch(URL_API_EXAMENES+'/'+exam_id+'/publish')
+    return JSONResponse(status_code = query.status_code, content = query.json())
