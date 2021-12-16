@@ -76,7 +76,8 @@ def only_student_access(courseId: UUID, session=Depends(validate_session_token))
     if validate_student(session[1], courseId):
         return courseId
     raise HTTPException(
-        status_code = status.HTTP_404_UNAUTHORIZED
+        status_code = status.HTTP_401_UNAUTHORIZED,
+        detail="Unauthorized operation."
     )
 
 
