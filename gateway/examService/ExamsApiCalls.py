@@ -78,12 +78,15 @@ async def getExamById(exam_id: str, session=Depends(validate_session_token)):
 
 
 @router.post('/create_exam/{courseId}')
-async def createExam(courseId: str, questionsList: Optional[List[questionsContent]], examDate: datetime = Body(default = None, embed=True), examTitle: str = Body(default = None, embed=True), session=Depends(owner_access)):
-    data = parseQuestionsData(questionsList)
-    query = requests.post(
-        URL_API_EXAMENES+'/create_exam/'+courseId+'?examDate='+examDate.strftime("%Y-%m-%dT%H:%M:%S")+'&examTitle='+examTitle,
-        data = data
-    )
+async def createExam(courseId: str, examDate: datetime = Body(default = None, embed=True), examTitle: str = Body(default = None, embed=True), session=Depends(owner_access), questionsList: Optional[List[questionsContent]] = None):
+    if questionsList != None:
+        data = parseQuestionsData(questionsList)
+        query = requests.post(
+            URL_API_EXAMENES+'/create_exam/'+courseId+'?examDate='+examDate.strftime("%Y-%m-%dT%H:%M:%S")+'&examTitle='+examTitle,
+            data = data
+        )
+    else:
+        query = requests.post(URL_API_EXAMENES+'/create_exam/'+courseId+'?examDate='+examDate.strftime("%Y-%m-%dT%H:%M:%S")+'&examTitle='+examTitle)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
