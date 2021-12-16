@@ -21,6 +21,7 @@ class CourseUpdate(BaseModel):
     latitude: Optional[float]
     longitude: Optional[float]
     category: Optional[str]
+    hashtags: Optional[List[str]]
 
 
 class ReviewCreate(BaseModel):
@@ -44,7 +45,9 @@ class CourseFilter:
         longitude: Optional[float] = None,
         hashtag: Optional[str] = None,
         minRating: Optional[int] = None,
-        category: Optional[str] = None
+        category: Optional[str] = None,
+        inEdition: Optional[bool] = None,
+        blocked: Optional[bool] = None,
     ):
         self.id = id
         self.name = name
@@ -55,3 +58,5 @@ class CourseFilter:
         self.hashtag = hashtag
         self.minRating = minRating
         self.category = category
+        self.inEdition = inEdition
+        self.blocked = blocked
