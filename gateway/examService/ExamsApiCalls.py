@@ -232,3 +232,21 @@ async def is_able_to_do_exam(exam_id: str, sessionToken: str, course_id=Depends(
 async def publish_exam(exam_id: str, session=Depends(owner_access)):
     query = requests.patch(URL_API_EXAMENES+'/'+exam_id+'/publish')
     return JSONResponse(status_code = query.status_code, content = query.json())
+
+
+@router.get('/{exam_id}/students_who_answered')
+async def get_students_that_answered_exam(exam_id: str, session=Depends(teacher_access)):
+    query = requests.get(URL_API_EXAMENES+'/'+exam_id+'/students_who_answered')
+    return JSONResponse(status_code = query.status_code, content = query.json())
+
+
+@router.get('/{exam_id}/students_with_qualification')
+async def get_students_that_have_qualifications(exam_id: str, session=Depends(teacher_access)):
+    query = requests.get(URL_API_EXAMENES+'/'+exam_id+'/students_with_qualification')
+    return JSONResponse(status_code = query.status_code, content = query.json())
+
+
+@router.get('/{exam_id}/students_without_qualification')
+async def get_students_that_have_qualifications(exam_id: str, session=Depends(teacher_access)):
+    query = requests.get(URL_API_EXAMENES+'/'+exam_id+'/students_without_qualification')
+    return JSONResponse(status_code = query.status_code, content = query.json())
