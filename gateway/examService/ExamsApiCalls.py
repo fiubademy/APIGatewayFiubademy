@@ -60,8 +60,8 @@ def parseQuestionsData(questionsList: List[questionsContent]):
 
 
 @router.get('/course/{courseId}', status_code = status.HTTP_200_OK)
-async def getExamByCourses(courseId: str, session=Depends(validate_session_token)):
-    query = requests.get(URL_API_EXAMENES+'/course/'+courseId)
+async def getExamByCourses(courseId: str, exam_status: Optional[str] = '', session=Depends(validate_session_token)):
+    query = requests.get(URL_API_EXAMENES+'/course/'+courseId+'?exam_status='+exam_status)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
