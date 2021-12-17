@@ -144,15 +144,10 @@ async def editExamQuestions(question_id:str, question_content: questionsContent,
 
 
 @router.post('/{exam_id}/answer/{question_id}')
-async def postAnswersExam(exam_id:str , question_id: str, user_id:str, courseId:str, response_content: Optional[str] = Body(default = None, embed=True) , choice_number: Optional[int] = Body(default = None, embed=True), session=Depends(only_student_access)):
-    url = URL_API_EXAMENES+'/'+exam_id+'/answer/'+question_id
-    if (response_content != None and choice_number != None) or (response_content == None and choice_number == None):
-        return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content="Error: You need to specify only response content or choice number and not both.")
-    if response_content != None:
-        url += '?response_content='+ response_content
-    if choice_number != None:
-        url += '?choice_number=' + choice_number
-    url += '&user_id='+user_id
+async def postAnswersExam(exam_id:str , question_id: str, user_id:str, courseId:str, response_content: str = Body(default = None, embed=True), session=Depends(only_student_access)):
+    if response_content == None:
+        return JSONResponse(status_code = status.HTTP_422_UNPROCESSABLE_ENTITY, content= "Response Content can not be None.")
+    url = URL_API_EXAMENES+'/'+exam_id+'/answer/'+question_id + '?response_content='+ response_content + '&user_id='+user_id
     query = requests.post(url)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
