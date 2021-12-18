@@ -57,7 +57,7 @@ def get_user_sub_level(userId):
 
 def get_course_sub_level(courseId):
     url_request = f'{URL_API}/all/1'
-    query = requests.get(url_request, params={'courseId': courseId})
+    query = requests.get(url_request, params={'id': courseId})
     if query.status_code != status.HTTP_200_OK:
         raise HTTPException(status_code=query.status_code,
                             detail=query.json())
@@ -117,6 +117,8 @@ def validate_new_collaborator(courseId: UUID, userId: UUID):
 def validate_new_student(courseId: UUID, userId: UUID):
     if is_owner(userId, courseId) or is_collaborator(userId, courseId):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='User already has another role in course.')
-    elif get_user_sub_level(userId) < get_course_sub_level(courseId):
+    user_sub = get_user_sub_level(userId)
+    course_sub = get_course_sub_level(courseId)
+    if user_sub < course_sub:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Subscription level unsatisfied.")
+            status_code=status.HTTP_403_FORBIDDEN, detail=f"Subscription level unsatisfied: user has level {user_sub} and course requires {course_sub}.")
