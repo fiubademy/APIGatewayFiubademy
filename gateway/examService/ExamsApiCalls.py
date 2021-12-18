@@ -241,12 +241,12 @@ async def get_students_that_answered_exam(exam_id: str, session=Depends(teacher_
 
 
 @router.get('/{exam_id}/students_with_qualification')
-async def get_students_that_have_qualifications(exam_id: str, session=Depends(teacher_access)):
-    query = requests.get(URL_API_EXAMENES+'/'+exam_id+'/students_with_qualification')
+async def get_students_that_have_qualifications(exam_id: str, student_id: Optional[str]='', session=Depends(teacher_access)):
+    query = requests.get(URL_API_EXAMENES+'/'+exam_id+'/students_with_qualification?student_id='+student_id)
     return JSONResponse(status_code = query.status_code, content = query.json())
 
 
 @router.get('/{exam_id}/students_without_qualification')
-async def get_students_that_have_qualifications(exam_id: str, session=Depends(teacher_access)):
+async def get_students_that_dont_have_qualifications(exam_id: str, session=Depends(teacher_access)):
     query = requests.get(URL_API_EXAMENES+'/'+exam_id+'/students_without_qualification')
     return JSONResponse(status_code = query.status_code, content = query.json())
