@@ -54,4 +54,4 @@ chmod +x RunServer.sh
 
 Finalmente, la imagen estará corriendo debido a los comandos de RunServer, y podrá accederse a la API Docs desde la URL:
 
-https://localhost:8002/docs
+https://127.0.0.1:8002/docs
