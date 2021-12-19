@@ -1,1 +1,1 @@
-python3 Gateway.py
+uvicorn gateway.Gateway:app --host 0.0.0.0 --port 8000

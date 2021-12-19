@@ -5,8 +5,9 @@ RUN apt-get -y install python3
 RUN apt-get -y install python3-pip
 COPY requirements.txt /app/
 RUN pip3 install -r requirements.txt
-EXPOSE 8002
+EXPOSE 8000
+RUN mkdir gateway
 COPY Commands.sh /app/
-COPY gateway/Gateway.py /app/
+COPY gateway/. /app/gateway
 CMD ./Commands.sh
 
