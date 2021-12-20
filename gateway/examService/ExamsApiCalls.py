@@ -250,3 +250,9 @@ async def get_students_that_have_qualifications(exam_id: str, student_id: Option
 async def get_students_that_dont_have_qualifications(exam_id: str, session=Depends(teacher_access)):
     query = requests.get(URL_API_EXAMENES+'/'+exam_id+'/students_without_qualification')
     return JSONResponse(status_code = query.status_code, content = query.json())
+
+
+@router.get('/{course_id}/student_state/{sessionToken}')
+async def get_student_state_in_course(course_id:str, session = Depends(validate_session_token)):
+    query = requests.get(URL_API_EXAMENES+'/'+course_id+'/student_state/'+session[1])
+    return JSONResponse(status_code = query.status_code, content = query.json())
