@@ -22,8 +22,11 @@ def is_owner(userId, courseId):
     url_request = f'{URL_API}/{courseId}/owner'
     query = requests.get(url_request)
     if query.status_code != status.HTTP_200_OK:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Failed to reach backend.')
+        if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                detail='Failed to reach backend.')
+        raise HTTPException(status_code=query.status_code,
+                    detail=query.json())
     return {'ownerId': userId} == query.json()
 
 
@@ -31,8 +34,11 @@ def is_collaborator(userId, courseId):
     url_request = f'{URL_API}/{courseId}/collaborators'
     query = requests.get(url_request)
     if query.status_code != status.HTTP_200_OK:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Failed to reach backend.')
+        if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                detail='Failed to reach backend.')
+        raise HTTPException(status_code=query.status_code,
+                    detail=query.json())
     return str(userId) in query.json()
 
 
@@ -40,8 +46,11 @@ def is_student(userId, courseId):
     url_request = f'{URL_API}/{courseId}/students'
     query = requests.get(url_request)
     if query.status_code != status.HTTP_200_OK:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail='Failed to reach backend.')
+        if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                                detail='Failed to reach backend.')
+        raise HTTPException(status_code=query.status_code,
+                    detail=query.json())
     return str(userId) in query.json()
 
 

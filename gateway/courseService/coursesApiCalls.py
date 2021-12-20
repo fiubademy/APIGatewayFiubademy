@@ -121,6 +121,20 @@ async def get_collaborators(courseId: UUID = Depends(owner_access)):
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
+@ router.get('/pending_collaborations/{userId}')
+async def get_pending_collaborations(session = Depends(validate_session_token)):
+    '''
+    Muestra la lista de invitaciones a colaborar a cursos.
+    Permisos necesarios: solo tener un token sesión válido.
+    '''
+    url_request = f'{URL_API}/pending_collaborations/{session[1]}'
+    query = requests.get(url_request)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
 @ router.get('/id/{courseId}/reviews')
 async def get_reviews(self: bool, courseId: UUID, pagenum: Optional[int] = 1, session=Depends(validate_session_token)):
     '''
@@ -216,11 +230,26 @@ async def add_student(userId: UUID, courseId: UUID = Depends(owner_access)):
 @ router.post('/id/{courseId}/add_collaborator/{email}')
 async def add_collaborator(userId: UUID = Depends(user_by_email), courseId: UUID = Depends(owner_access)):
     '''
-    Agrega al usuario como colaborador del curso.
+    Envía una invitación al usuario para ser colaborador del curso.
     Permisos necesarios: ser el dueño del curso o un admin.
     '''
     validate_new_collaborator(courseId, userId)
     url_request = f'{URL_API}/{courseId}/add_collaborator/{userId}'
+    query = requests.post(url_request)
+    if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
+    return JSONResponse(status_code=query.status_code, content=query.json())
+
+
+@ router.post('/id/{courseId}/accept_collaborator/{userId}')
+async def accept_collaborator(courseId: UUID, session=Depends(validate_session_token)):
+    '''
+    Confirma al usuario logueado como colaborador del curso, si tenía una invitación pendiente.
+    Permisos necesarios: solo tener un token sesión válido.
+    '''
+    validate_new_collaborator(courseId, session[1])
+    url_request = f'{URL_API}/{courseId}/accept_collaborator/{session[1]}'
     query = requests.post(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
@@ -302,7 +331,7 @@ async def remove_student(userId: UUID, courseId: UUID = Depends(owner_access)):
 @ router.delete('/id/{courseId}/remove_collaborator/{userId}')
 async def remove_collaborator(userId: UUID, courseId: UUID = Depends(owner_access)):
     '''
-    Elimina al usuario de los colaboradores del curso.
+    Elimina al usuario de los colaboradores del curso. Si no es colaborador pero tiene una invitación a colaborar pendiente, la elimina.
     Permisos necesarios: ser el dueño del curso o un admin.
     '''
     url_request = f'{URL_API}/{courseId}/remove_collaborator/{userId}'
@@ -354,7 +383,7 @@ async def remove_hashtags(tags: List[str], courseId: UUID = Depends(owner_access
     return JSONResponse(status_code=query.status_code, content=query.json())
 
 
-@ router.delete('id/{courseId}/remove_content/{contentId}')
+@ router.delete('/id/{courseId}/remove_content/{contentId}')
 async def remove_content(contentId: str, _=Depends(owner_access)):
     '''
     Elimina de un curso un contenido según si id (obtenido desde get_content_list).
