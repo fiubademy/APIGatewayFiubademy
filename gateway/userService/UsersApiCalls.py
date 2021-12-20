@@ -178,7 +178,12 @@ def store_register(user_id, is_federated):
 
 
 @router.get('/{page_num}')
-async def getUsers(page_num: int, emailFilter: Optional[str] = '', usernameFilter: Optional[str] = ''):
+async def getUsers(page_num: int, sessionToken: str, emailFilter: Optional[str] = '', usernameFilter: Optional[str] = ''):
+    tokenExists, tokenExpired, user_id = checkSessionToken(sessionToken)
+    if not tokenExists:
+        return JSONResponse(status_code=498, content='Session Token does not exist')
+    if tokenExpired:
+        return JSONResponse(status_code=498, content='Session Token expired.')
     url_request = URL_API_USUARIOS + '/' + str(page_num)
     query_params_quantity = 0
     if emailFilter != '' or usernameFilter != '':
@@ -291,16 +296,18 @@ async def recoverPassword(token:str, newPassword: str = Body(default = None, emb
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
 
-@router.patch('/{session_token}/set_sub')
-async def setSubscription(session_token: str, sub_level: int = Body(default = None, embed=True)):
+@router.post('/{session_token}/pay_sub')
+async def paySubscription(session_token: str, sub_level: int = Body(default = None, embed=True)):
     tokenExists, tokenExpired, user_id = checkSessionToken(session_token)
     if not tokenExists:
         return JSONResponse(status_code=498, content='Session Token does not exist')
     if tokenExpired:
         return JSONResponse(status_code=498, content='Session Token expired.')
-    url_request = URL_API_USUARIOS + '/' + user_id + '/set_sub'
-    retorno = requests.patch(url_request, params={
-                             'user_id': user_id, 'sub_level': sub_level})
+    url_request = URL_API_USUARIOS + '/' + user_id + '/pay_sub'
+    retorno = requests.post(
+        url_request,
+        data = '{"type_of_sub": ' + str(sub_level) + '}'
+    )
     return JSONResponse(status_code=retorno.status_code, content=retorno.json())
 
 
