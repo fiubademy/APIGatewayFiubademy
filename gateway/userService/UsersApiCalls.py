@@ -181,7 +181,11 @@ def store_register(user_id, is_federated):
 async def getUsers(page_num: int, sessionToken: str, emailFilter: Optional[str] = '', usernameFilter: Optional[str] = ''):
     tokenExists, tokenExpired, user_id = checkSessionToken(sessionToken)
     if not tokenExists:
-        return JSONResponse(status_code=498, content='Session Token does not exist')
+        tokenExists, tokenExpired, user_id = checkAdminSessionToken(sessionToken)
+        if not tokenExists:
+            return JSONResponse(status_code=498, content='Session Token does not exist')
+        if tokenExpired:
+            return JSONResponse(status_code=498, content='Session Token expired.')
     if tokenExpired:
         return JSONResponse(status_code=498, content='Session Token expired.')
     url_request = URL_API_USUARIOS + '/' + str(page_num)
