@@ -10,6 +10,7 @@ from gateway.userService import UsersApiCalls
 from gateway.courseService import coursesApiCalls, setupCourseApi
 from gateway.examService import ExamsApiCalls
 from gateway.paymentService import PaymentApiCalls
+from gateway.consultasService import consultasApiCalls
 
 origins = ["*"]
 
@@ -33,6 +34,7 @@ app.include_router(UsersApiCalls.router, prefix="/users", tags=["Users"])
 app.include_router(coursesApiCalls.router, prefix="/courses", tags=["Courses"])
 app.include_router(ExamsApiCalls.router, prefix='/exams', tags=["Exams"])
 app.include_router(PaymentApiCalls.router, prefix='/payments', tags=['Payments'])
+app.include_router(consultasApiCalls.router, prefix='/consultas', tags=['Consultas'])
 
 if __name__ == '__main__':
     Base.metadata.drop_all(engine)
