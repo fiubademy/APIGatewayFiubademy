@@ -2,6 +2,7 @@ from fastapi.exceptions import HTTPException
 from starlette.responses import JSONResponse
 from fastapi import Depends, APIRouter, status
 import requests
+import json
 
 from consultasService.models import Token, Notification
 from courseService.validations import validate_session_token
@@ -21,7 +22,7 @@ async def update_fcm_token(token: Token, session=Depends(validate_session_token)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
+    return JSONResponse(status_code=query.status_code)
 
 
 @ router.post('/notify_user')
@@ -34,7 +35,7 @@ async def notify_user(notification: Notification):
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail='Failed to reach backend.')
-    return JSONResponse(status_code=query.status_code, content=query.json())
+    return JSONResponse(status_code=query.status_code)
 
 
 
