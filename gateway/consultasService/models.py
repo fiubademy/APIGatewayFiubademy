@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class Token(BaseModel):
-    token: str
+    fcm_token: str
 
 
 class Notification(BaseModel):

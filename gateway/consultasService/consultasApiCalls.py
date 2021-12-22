@@ -10,8 +10,8 @@ from consultasService.setupConsultasApi import URL_API
 router = APIRouter(dependencies=[Depends(validate_session_token)])
 
 
-@ router.put('/update_token')
-async def update_token(token: Token, session=Depends(validate_session_token)):
+@ router.put('/update_fcm_token')
+async def update_fcm_token(token: Token, session=Depends(validate_session_token)):
     '''
     Actualiza el token de FCM asociado al usuario.
     '''
