@@ -136,7 +136,7 @@ async def get_pending_collaborations(session = Depends(validate_session_token)):
 
 
 @ router.get('/id/{courseId}/reviews')
-async def get_reviews(self: bool, courseId: UUID, pagenum: Optional[int] = 1, session=Depends(validate_session_token)):
+async def get_reviews(self: bool, courseId: UUID, ratingFilter: Optional[int] = None, pagenum: Optional[int] = 1, session=Depends(validate_session_token)):
     '''
     Si el parámetro self es true devuelve la review cargada por el usuario en el curso especificado.
     Si no, devuelve todas las reviews de dicho curso, usando paginación.
@@ -147,6 +147,8 @@ async def get_reviews(self: bool, courseId: UUID, pagenum: Optional[int] = 1, se
         url_request = f'{URL_API}/{courseId}/review/{session[1]}'
     else:
         url_request = f'{URL_API}/{courseId}/all_reviews/{pagenum}'
+        if ratingFilter is not None:
+            url_request += f'?ratingFilter={ratingFilter}'
     query = requests.get(url_request)
     if query.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise HTTPException(
